@@ -415,7 +415,8 @@
 		       (create "Ctrl-Enter"
 			       (lambda (cm)))))
 	
-
+	
+	
 	
 	;; set id to div-outer for later use
 	(defvar cell-id (+ "cell" cell-counter))
@@ -629,6 +630,17 @@
 			      (when (and (chain event ctrl-key)
 					 (= (chain event which) 13))
 				(eval-cell-and-go focused-cell "evalk")))))
+
+
+	    ;; add key event ctrl-s to save notebook
+	    (chain ($ document)
+		   (keydown (lambda (event)
+			      (when (and (chain event ctrl-key)
+					 (= (chain event which) 83))
+				(save-notebook)))))
+	    
+	    
+	    
 	    (change-title)
 	    (console.log "Openning connection to websocket")))    
 
