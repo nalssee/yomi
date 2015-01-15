@@ -7,9 +7,9 @@ CL implementation: SBCL, CCL
 
 
 ## Parameters
-\*keymap\*
+\*keymap\* : "emacs", "vim" or "sublime"
 
-\*max-eval-threads\*
+\*max-eval-threads\* : maximum number of evaluation threads
 
 ## Keyboard Shortcut
 Ctrl-Return : Evaluate focused cell
