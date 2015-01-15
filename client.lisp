@@ -523,7 +523,9 @@
 		for cell in (chain all-cells (slice first-eval-cell-position)) do
 		  (render-result cell evaled-value stdout))
 	     (when (= command "evaled")  
-	       (focus-to-next-cell (getprop all-cells last-eval-cell-position)))))
+	       (focus-to-next-cell (getprop all-cells last-eval-cell-position))
+	       (auto-scroll)
+	       )))
 	  
 	  ;; load file
 	  ((= command "code")
