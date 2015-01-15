@@ -102,8 +102,7 @@
   
   #+(AND DARWIN CCL)
   (inferior-shell:run
-   `(open "-a" "Safari"
-	  ,(format nil "http://localhost:~A/yomi" port)))
+   `(open ,(format nil "http://localhost:~A/yomi" port)))
   
   
   #+LINUX
