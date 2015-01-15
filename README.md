@@ -17,4 +17,7 @@ Ctrl-Return : Evaluate focused cell
 Ctrl-s : Save notebook
 
 
+## Quick start
+\(yomi:start-yomi\)
+
 
