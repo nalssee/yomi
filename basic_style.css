@@ -1,0 +1,25 @@
+.CodeMirror {
+    border: 1px solid #eee;
+    height: auto;
+    width: 96%;
+    margin: 0 auto
+    
+}
+
+
+
+#cellpad {
+    overflow: scroll;
+    height: 90vh;
+    width: 100%;
+}
+
+
+
+
+body {
+    overflow: hidden;
+
+}
+
+
