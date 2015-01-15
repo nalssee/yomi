@@ -100,7 +100,7 @@
    "/usr/bin/open"
    (list (format nil "http://localhost:~A/yomi" port)))
   
-  #+OS-MACOSX
+  #+(AND DARWIN CCL)
   (inferior-shell:run
    `(open "-a" "Safari"
 	  ,(format nil "http://localhost:~A/yomi" port)))
