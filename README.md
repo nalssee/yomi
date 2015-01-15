@@ -3,7 +3,9 @@
 ## Tested
 OS: MACOS X, Linux
 
-CL implementation: SBCL, CCL
+CL implementation: SBCL, CCL (must support multi-threads)
+
+Web browsers: Recent versions of Google Chrome, Firefox and Safari, must support web socket
 
 
 ## Parameters
