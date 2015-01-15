@@ -288,8 +288,8 @@
 		    (let ((standard-output
 			   (with-output-to-string (*standard-output*)
 			     (setf evaled-value
-				   (eval (read-from-string
-					  (enclose-code-with-prelude cell-content)))))))
+				   (eval-with-prelude cell-content)
+				   ))))
 		      standard-output)
 		  
 		  ;; only comments
@@ -326,6 +326,15 @@
 
 (defun enclose-code-with-prelude (str)
   (format nil "(progn (in-package :ynb)  ~A)" str))
+
+(defun eval-with-prelude (str)
+  (let (result)
+    (in-package :ynb)
+    (setf result (eval (read-from-string (format nil "(progn ~A)" str))))
+    (in-package :yomi)
+    result))
+
+
 
 
 (defun shorten-file-name (file)
