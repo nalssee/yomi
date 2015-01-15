@@ -103,7 +103,11 @@
   (inferior-shell:run
    `(xdg-open ,(format nil "http://localhost:~A/yomi" port)))
 
-
+  #+:OS-WINDOWS
+  ;; haven't tested yet
+  (inferior-shell:run
+   `(start ,(format nil "http://localhost:~A/yomi" port)))
+  
   )
 
 
