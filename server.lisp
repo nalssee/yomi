@@ -327,6 +327,9 @@
 (defun enclose-code-with-prelude (str)
   (format nil "(progn (in-package :ynb)  ~A)" str))
 
+
+;; todo
+;; <- must be studied further
 (defun eval-with-prelude (str)
   (let (result)
     (in-package :ynb)
