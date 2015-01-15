@@ -95,19 +95,28 @@
   
 
 (defun open-browser (port)
-  #+:OS-MACOSX
+  #+(AND DARWIN SBCL)
+  (sb-ext:run-program
+   "/usr/bin/open"
+   (list (format nil "http://localhost:~A/yomi" port)))
+  
+  #+OS-MACOSX
   (inferior-shell:run
    `(open "-a" "Safari"
 	  ,(format nil "http://localhost:~A/yomi" port)))
-  #+:LINUX
+  
+  
+  #+LINUX
   (inferior-shell:run
    `(xdg-open ,(format nil "http://localhost:~A/yomi" port)))
 
-  #+:OS-WINDOWS
+  #+OS-WINDOWS
   ;; haven't tested yet
   (inferior-shell:run
    `(start ,(format nil "http://localhost:~A/yomi" port)))
   
+  ;; do nothing otherwise
+
   )
 
 

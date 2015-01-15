@@ -1,3 +1,5 @@
+
+
 (asdf:defsystem :yomi
   :author "Kenjin Che <kenjin@sdf.org>"
   :depends-on (:cl-who
@@ -5,6 +7,7 @@
 	       :clws
 	       :parenscript
 	       :cl-json
+	       #-(AND DARWIN SBCL)
 	       :inferior-shell
 	       :cl-fad
 	       :bordeaux-threads
