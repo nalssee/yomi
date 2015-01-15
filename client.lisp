@@ -326,22 +326,30 @@
       (create command command
 	      data data))
     
-    
+    (defun empty-notebook-p ()
+      (and (= (chain all-cells length) 1)
+	   (= ""
+	      (chain (getprop (first-cell) 'editor) (get-value)))))
+        
     (defun save-notebook ()
-      (let ((filename
-	     (chain document (get-element-by-id "rename_span")
-		    |innerHTML|)))
-	(ws.send 
-	 (chain +JSON+
-		(stringify
-		 (make-message
-		  (if (= ever-been-saved 0)
-		      "saveFileWithCaution"
-		      "saveFile")
-		  ;; first element of data list is a filename to save
-		  (append (list filename)
-			  (loop for cell in all-cells collect
-			       (chain (getprop cell 'editor) (get-value))))))))))
+      (unless (empty-notebook-p)
+	(let ((filename
+	       (chain document (get-element-by-id "rename_span")
+		      |innerHTML|)))
+	  (ws.send 
+	   (chain +JSON+
+		  (stringify
+		   (make-message
+		    (if (= ever-been-saved 0)
+			"saveFileWithCaution"
+			"saveFile")
+		    ;; first element of data list is a filename to save
+		    (append (list filename)
+			    (loop for cell in all-cells collect
+				 (chain (getprop cell 'editor) (get-value)))))))))))
+
+    
+    
 
     ;; cell is an object with a div element and an editor in the element
     ;; if a sibling is given, make a cell after sibling

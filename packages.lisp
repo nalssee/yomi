@@ -14,5 +14,8 @@ Yomi package
 
 ;; package for yomi notebook
 (defpackage :ynb
-  (:use :cl :yomi))
+  (:use :cl :yomi)
+  (:shadow :start-yomi))
+
+
 
