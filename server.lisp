@@ -1,4 +1,4 @@
-;; server part 
+;; server part
 (in-package :yomi)
 
 (defvar *eval-threads-pool*

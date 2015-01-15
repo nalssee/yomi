@@ -18,6 +18,10 @@
 (defparameter *max-eval-threads* 20)
 
 
+;; one of "emacs" "vim" "sublime"
+(defparameter *keymap* "emacs")
+
+
 
 (defparameter *yomi-path-default*
   (asdf:system-source-directory 'yomi))
@@ -33,6 +37,10 @@
     "flot/excanvas.js"
     "CodeMirror/lib/codemirror.js"
     "CodeMirror/lib/codemirror.css"
+    "CodeMirror/keymap/emacs.js"
+    "CodeMirror/keymap/vim.js"
+    "CodeMirror/keymap/sublime.js"    
+    
     
     "CodeMirror/mode/commonlisp/commonlisp.js"
     "CodeMirror/addon/edit/matchbrackets.js"

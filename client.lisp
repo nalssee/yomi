@@ -402,6 +402,7 @@
 	       (create value (chain textarea |innerHTML|)
 		       mode "commonlisp"
 		       line-numbers true
+		       key-map (lisp *keymap*)
 		       match-brackets true
 		       viewport-margin |Infinity|)))
 	
@@ -413,6 +414,7 @@
 		       "extraKeys"
 		       (create "Ctrl-Enter"
 			       (lambda (cm)))))
+	
 
 	
 	;; set id to div-outer for later use

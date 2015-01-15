@@ -7,15 +7,15 @@ Yomi package
    :start-yomi
    :make-series
    :make-chart
-
-
-	   ))
+   :*max-eval-threads*
+   :*keymap*
+   ))
 
 
 ;; package for yomi notebook
 (defpackage :ynb
-  (:use :cl :yomi)
-  (:shadow :start-yomi))
-
-
-
+  (:use :cl)
+  (:import-from
+   :yomi
+   :make-chart
+   :make-series))
