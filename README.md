@@ -1,20 +1,20 @@
 ## YOMI
 
-## TESTED
-os: os x, linux
+## Tested
+OS: MACOS X, Linux
 
-cl implementations: sbcl, ccl
+CL implementation: SBCL, CCL
 
 
-## parameters
-*keymap*
+## Parameters
+\*keymap\*
 
-*max-eval-threads*
+\*max-eval-threads\*
 
-## keyboard shortcut
-ctrl-return : eval focused cell
+## Keyboard Shortcut
+Ctrl-Return : Evaluate focused cell
 
-ctrl-s : save notebook
+Ctrl-s : Save notebook
 
 
 
