@@ -71,8 +71,10 @@
 
   ;; I have no idea of "how many threads" is too many but
   ;; 100 seems to me too many.
-  (when (> max-eval-threads 100)
-    (format t "~%Too many working eval threads")
+  (unless (and (integerp max-eval-threads)
+	       (> max-eval-threads 1)
+	       (< max-eval-threads 100))
+    (format t "~%max-eval-threads must be an integer from 2 to 99")
     (format t "~%Exiting...")
     (return-from start-yomi))
 
