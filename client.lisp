@@ -39,20 +39,6 @@
   (ps
     (lisp *ps-lisp-library*)
 
-    (setf
-
-     ;; string formatting
-     ;; "<p>{0} {1}</p>".format("Hello", "Kenjin")
-     ;; "<p>Hello Kenjin</p>
-     (chain |String| prototype format)
-     #'(lambda ()
-	 (let ((s this)
-	       (i arguments.length))
-	   (while (>= i 0)
-	     (setf s (s.replace (new (|RegExp| (+ "\\{" i "\\}") "gm")) (getprop arguments i)))
-	     (decf i))
-	   s)))
-
     ;; parameters
     ;; I have no idea of the nameing conventions for Parenscript global variables.
     (defvar focused-cell nil)
@@ -68,23 +54,32 @@
     ;; 0 : never been saved with the current file name
     ;; 1 : saved at least once
     (defvar ever-been-saved 0)
-
         
     (defun first (x) (getprop x 0))
     (defun rest (x) (chain x (slice 1)))
     (defun last1 (x)
       (getprop x (- (chain x length) 1)))
+    
+    (setf
 
-
+     ;; string formatting
+     ;; "<p>{0} {1}</p>".format("Hello", "Kenjin")
+     ;; "<p>Hello Kenjin</p>
+     (chain |String| prototype format)
+     #'(lambda ()
+	 (let ((s this)
+	       (i arguments.length))
+	   (while (>= i 0)
+	     (setf s (s.replace (new (|RegExp| (+ "\\{" i "\\}") "gm")) (getprop arguments i)))
+	     (decf i))
+	   s)))
 
     (defun open-in-new-tab (url)
       (setf win (window.open url "_blank"))
       (win.focus))
-    
    
     (defun choose-notebook ()
       (chain document (get-element-by-id "choose-notebook") (click)))
-
 
     (defun position (x xs)
       (let ((result nil))
