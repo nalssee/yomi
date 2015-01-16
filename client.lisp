@@ -274,6 +274,8 @@
 	    (saved-span (chain document (get-element-by-id "rename_save"))))
 	(unless (= (chain saved-span |innerHTML|)
 		   (chain input value))
+	  (console.log  (chain saved-span |innerHTML|))
+	  (console.log  (chain input value))
 	  (setf ever-been-saved 0))
 	(setf (chain span |innerHTML|)
 	      (chain input value))
@@ -281,7 +283,7 @@
 	(setf (chain input style display) "none")
 
 	(setf (chain saved-span |innerHTML|)
-	      (chain input value))))
+	      (chain span |innerHTML|))))
     
 
     
@@ -440,16 +442,13 @@
 			(make-message
 			 "loadFile"
 			 notebook-filename))))
-	
-	(setf (chain document (get-element-by-id "rename_span")  |innerHTML|)
-	      (cutout-extension notebook-filename))
-	(setf (chain document (get-element-by-id "rename_input") value)
-	      (cutout-extension notebook-filename)))
-
-      
-      
-
-      )
+	(let ((filename (cutout-extension notebook-filename)))
+	  (setf (chain document (get-element-by-id "rename_span")  |innerHTML|)
+		filename)
+	  (setf (chain document (get-element-by-id "rename_save")  |innerHTML|)
+		filename)
+	  (setf (chain document (get-element-by-id "rename_input") value)
+		filename))))
 
     
     ;; chage title to notebook name
