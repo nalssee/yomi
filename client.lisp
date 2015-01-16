@@ -69,6 +69,14 @@
     ;; 1 : saved at least once
     (defvar ever-been-saved 0)
 
+        
+    (defun first (x) (getprop x 0))
+    (defun rest (x) (chain x (slice 1)))
+    (defun last1 (x)
+      (getprop x (- (chain x length) 1)))
+
+
+
     (defun open-in-new-tab (url)
       (setf win (window.open url "_blank"))
       (win.focus))
@@ -357,12 +365,8 @@
     (defun make-cell (&optional sibling)
       (let ((div-outer (chain document (create-element "div")))
 	    (div-main (chain document (create-element "div") ))
-	    ;; p1, p2, p3 are solely for eye pleasure
-	    (p1 (chain document (create-element "p")))
 	    (textarea (chain document (create-element "textarea")))
-	    (p2 (chain document (create-element "p")))
-	    (resultarea (chain (chain document (create-element "div"))))
-	    (p3 (chain document (create-element "p"))))
+	    (resultarea (chain (chain document (create-element "div")))))
 	
 	;; style
 	(setf (chain div-main style border-style) "solid")
@@ -371,21 +375,21 @@
 	
 	;; invisible border
 	(setf (chain div-main style border-width) "1px")
+	(setf (chain div-main style padding) "10px 10px 10px 10px")
+	(setf (chain div-main style margin) "0 auto")
+	(setf (chain div-main style width) "95%")	
 
+	
 	
 	;; resultarea style
 	(setf (chain resultarea style white-space) "pre-wrap")
 	(setf (chain resultarea style margin-left) "50px")	
 	
 	;; append elements
-	(chain div-main (append-child p1))
 	(chain div-main (append-child textarea))
-	(chain div-main (append-child p2))	
 	(chain div-main (append-child resultarea))
 	;; insert div-main into div-outer
 	(chain div-outer (append-child div-main))
-	(chain div-outer (append-child p3))
-
 	
 	;; You must first attach a div element to a document before it wears CodeMirror.
 	(if (= sibling undefined)
@@ -416,8 +420,6 @@
 			       (lambda (cm)))))
 	
 	
-	
-	
 	;; set id to div-outer for later use
 	(defvar cell-id (+ "cell" cell-counter))
 	(setf (chain div-outer id) cell-id)
@@ -437,7 +439,6 @@
 	  ;; It's really tedious to carry the whole cells separately
 	  ;; but I've got no better way yet.
 	  (auto-scroll)
-
 	  
 	  (if (= sibling undefined)
 	      (chain all-cells (push cell))
@@ -455,14 +456,10 @@
 	))
 
    
-    ;; later you may want to add options parameter
     (defun draw-chart (place data options)
       (chain ($ document)
 	     (ready (lambda ()
 		      (chain $ (plot place data options))))))
-
-
-
     
     (defun cutout-extension (filename)
       (let ((splited  (chain filename (split "."))))
@@ -481,7 +478,6 @@
 			 "loadFile"
 			 notebook-filename))))
 	
-	
 	(setf (chain document (get-element-by-id "rename_span")  |innerHTML|)
 	      (cutout-extension notebook-filename))
 	(setf (chain document (get-element-by-id "rename_input") value)
@@ -489,12 +485,11 @@
 
       
       
-      
 
       )
-    ;; chage title to notebook name
 
     
+    ;; chage title to notebook name
     (defun change-title ()
       (let ((title-element (chain document (get-element-by-id "title"))))
 	(setf (chain title-element |innerHTML|)
@@ -502,12 +497,6 @@
 		 (chain document (get-element-by-id "rename_input") value)))))
     
 
-    
-    (defun first (x) (getprop x 0))
-    (defun rest (x) (chain x (slice 1)))
-
-    (defun last1 (x)
-      (getprop x (- (chain x length) 1)))
     
     (defun handle-message (msg)
       (let* ((json-msg (chain +JSON+ (parse msg)))
