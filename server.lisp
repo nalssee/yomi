@@ -66,6 +66,8 @@
     (format t "~%No such directory in the system: ~A" working-directory)
     (format t "~%Exiting...")
     (return-from start-yomi))
+  
+  (setf *notebook-files-default-directory* working-directory)
 
   ;; I have no idea of "how many threads" is too many but
   ;; 100 seems to me too many.
@@ -73,6 +75,8 @@
     (format t "~%Too many working eval threads")
     (format t "~%Exiting...")
     (return-from start-yomi))
+
+  (setf *max-eval-threads* max-eval-threads)
   
 
   (if *server-running-p*
