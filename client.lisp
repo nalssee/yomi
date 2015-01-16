@@ -1,38 +1,8 @@
+;; 
+;; Tidy up later, not now
+;;
+
 (in-package :yomi)
-
-;; websocket message commands
-;; A Message is transfered as a json string
-
-;; client -> server (requests)
-;; 1. command: eval (or evalk, one sell evaluation by ctrl-return)  
-;;    data:    a list of cell number, cell content pairs
-
-;; 2. command: interrupt (interrupt)
-;;    data:    emtpy string. what else you want?
-
-;; 3. command: loadFile
-;;    data:    filename (ex, "foo.yomi")
-
-;; 4. command: saveFile
-;;    data:    (filename cell-content-1 cell-content-2 ...)
-
-
-;; server -> client (responses)
-;; 1. command: evaled (evaluated results)
-;;    data: a list of (cellno, evaluated value, string for standard output)
-;;     Evaluated value is again composed of a command and data
-;;       a. command: text
-;;          data:    string
-;;       b. command: drawChart
-;;          data:    an instance of chart class
-;;       c. command: error
-;;          data:    string
-
-;; 2. command: code (code to load)
-;;    data:    a list of string
-
-;; 3. command: systemError (file IO/threads realated errors)
-;;    data: a string
 
 
 (defun js-for-notebook-page (notebook-filename)
@@ -47,9 +17,9 @@
     ;; removed cell contents to recover
     ;; a list of cell position and editor value pairs
     (defvar removed-cell-contents (array))
+
    
     (defvar cell-counter 0)
-
 
     ;; 0 : never been saved with the current file name
     ;; 1 : saved at least once
@@ -61,7 +31,6 @@
       (getprop x (- (chain x length) 1)))
     
     (setf
-
      ;; string formatting
      ;; "<p>{0} {1}</p>".format("Hello", "Kenjin")
      ;; "<p>Hello Kenjin</p>
@@ -74,6 +43,7 @@
 	     (decf i))
 	   s)))
 
+    
     (defun open-in-new-tab (url)
       (setf win (window.open url "_blank"))
       (win.focus))
@@ -109,7 +79,6 @@
     ;; "evalk" means evaluation by keyboard short cut (ctrl-return)
     ;; see for yourself what's the difference
     (defun eval-cell-and-go (cell &optional (command "eval"))
-
       (let ((cell-content (chain (getprop cell 'editor) (get-value)))
 	    (cell-no (cell-position cell)))
 	(when (not (and (last-cell-p cell)
@@ -132,9 +101,7 @@
    
     ;; eval all cells from the focused cell
     (defun eval-forward ()
-
-      (let* (
-	     (cells-to-eval (chain all-cells
+      (let* ((cells-to-eval (chain all-cells
 				   (slice (cell-position focused-cell))))
 	     (first-cell-position (cell-position focused-cell)))
 	(ws.send
@@ -146,11 +113,10 @@
 			      (array i (chain (getprop c 'editor) (get-value))))))))))
 
     
-   
-   
     (defun last-cell ()
       (let* ((n (chain all-cells length)))
 	(getprop all-cells (- n 1))))
+
 
     (defun first-cell ()
       (getprop all-cells 0))
@@ -286,43 +252,41 @@
 	;; hide the file name span
 	(setf (chain span style display)  "none")
 	;; show input and button
-	(setf (chain input style display) "inline")
-	
+	(setf (chain input style display) "inline")))
 
-	)
-      
-      
-      )
+
 
     ;; blink rename_span content for a second.
     (defun blink-rename_span (message)
-      (let* ((span (chain document (get-element-by-id "rename_span")))
-	     (span-content (chain span |innerHTML|)))
+      (let* ((saved-span-content (chain
+				  document (get-element-by-id "rename_save")
+				  |innerHTML|))
+	     (span (chain document (get-element-by-id "rename_span"))))
 	(setf (chain span |innerHTML|) message)
 	(set-timeout (lambda ()
 		       ;; revert it back
-		       (setf (chain span |innerHTML|) span-content))
+		       (setf (chain span |innerHTML|) saved-span-content))
 		     1000)))
-    
     
     (defun rename-notebook ()
       (let ((span (chain document (get-element-by-id "rename_span")))
-	    (input  (chain document (get-element-by-id "rename_input"))))
-	(unless (= (chain span |innerHTML|)
+	    (input  (chain document (get-element-by-id "rename_input")))
+	    (saved-span (chain document (get-element-by-id "rename_save"))))
+	(unless (= (chain saved-span |innerHTML|)
 		   (chain input value))
 	  (setf ever-been-saved 0))
-	
 	(setf (chain span |innerHTML|)
 	      (chain input value))
 	(setf (chain span style display)  "inline")
 	(setf (chain input style display) "none")
-	
 
-	
-	)
-      
+	(setf (chain saved-span |innerHTML|)
+	      (chain input value))))
+    
 
-      )
+    
+
+    
 
     ;; make a message to send to the server throught web socket
     (defun make-message (command data)
@@ -362,19 +326,23 @@
 	    (div-main (chain document (create-element "div") ))
 	    (textarea (chain document (create-element "textarea")))
 	    (resultarea (chain (chain document (create-element "div")))))
+
+	;; I think the following some lines must go to css file
+	;; But I will just leave it be for this experiental phase.
 	
 	;; style
 	(setf (chain div-main style border-style) "solid")
 	(setf (chain div-main style border-radius) "0.5em")
+	;; invisible border
 	(setf (chain div-main style border-color) "#FFFFFF")
 	
-	;; invisible border
+	
 	(setf (chain div-main style border-width) "1px")
+
 	(setf (chain div-main style padding) "10px 10px 10px 10px")
 	(setf (chain div-main style margin) "0 auto")
 	(setf (chain div-main style width) "95%")	
 
-	
 	
 	;; resultarea style
 	(setf (chain resultarea style white-space) "pre-wrap")
@@ -638,14 +606,6 @@
 
     
 
-    
-
-  
-
-  
-
-
-
 
 (defparameter *menubutton-size* "40px")
 
@@ -741,10 +701,15 @@
 	    
 	      (:div :id "rename_div"
 		    :style "display:inline-block; position:absolute; right: 0;margin-right:14px"
+		    
+		    (:span :style "display:none;"
+			   :id "rename_save"
+			   (str untitled))
 		    (:span :style "font-size:120%;color:gray;"
 			   :onclick (ps (rename-input-show-up))
 			   :id "rename_span"
 			   (str untitled))
+		    
 		    (:input :style "display:none;border-style:solid;
                                   border-radius:0.5em;border-color:gray;"
 			    :type "text"

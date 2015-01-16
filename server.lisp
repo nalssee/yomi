@@ -1,10 +1,17 @@
 ;; server part
 (in-package :yomi)
 
+
+;; Don't try to localize these variables
+;; I am a nervous geek
 (defvar *eval-threads-pool*
   (make-array
    *max-eval-threads*
    :initial-element nil))
+(defvar *global-lock* (bt:make-lock))
+(defvar *global-cv* (bt:make-condition-variable))
+
+
 
 (defclass message ()
   ((command :initarg :command
@@ -25,7 +32,7 @@
 ;; 3. command: loadFile
 ;;    data:    filename (ex, "foo.yomi")
 
-;; 4. command: saveFile
+;; 4. command: saveFile (or saveFileWithCautio,n when the file already exists in the working directory, throws an error. Of course it is safe to save a file multiple times, if it's a loaded file or newly created file)
 ;;    data:    (filename cell-content-1 cell-content-2 ...)
 
 
@@ -46,29 +53,37 @@
 ;; 3. command: systemError (file IO/threads realated errors)
 ;;    data: a string
 
+
 (defun start-yomi (&key
 		     (working-directory *notebook-files-default-directory*)
 		     (max-eval-threads *max-eval-threads*))
+  
   ;; server preparation
+
+  ;; Permission is not checked.
+  ;; Maybe later
   (unless (directory-exists-p working-directory)
     (format t "~%No such directory in the system: ~A" working-directory)
     (format t "~%Exiting...")
     (return-from start-yomi))
-  
+
+  ;; I have no idea of "how many threads" is too many but
+  ;; 100 seems to me too many.
   (when (> max-eval-threads 100)
     (format t "~%Too many working eval threads")
     (format t "~%Exiting...")
     (return-from start-yomi))
   
-  ;; find available ports 
-  (setf *yomi-server-port* (search-available-port *yomi-server-port*))
-  (setf *web-socket-port* (search-available-port *web-socket-port*))
 
   (if *server-running-p*
-      (open-browser *yomi-server-port*)
-      
+      (format t "~%Server is already running at: http://localhost:~A/yomi"
+	      *yomi-server-port*)
       (progn
 	(setf *server-running-p* t)
+
+	;; find available ports 
+	(setf *yomi-server-port* (search-available-port *yomi-server-port*))
+	(setf *web-socket-port* (search-available-port *web-socket-port*))
 
 	;; websocket
 	(bt:make-thread (lambda () (run-server *web-socket-port*))
@@ -82,11 +97,9 @@
 			  (run-resource-listener
 			   (find-global-resource *ws-loc*)))
 			:name "resource listener")
-
 	
 	;; Hunchentoot server
 	(publish-static-content)
-
 	(start (make-instance 'easy-acceptor :port *yomi-server-port*))
 	(open-browser *yomi-server-port*)
 
@@ -103,8 +116,7 @@
   #+(AND DARWIN CCL)
   (inferior-shell:run
    `(open ,(format nil "http://localhost:~A/yomi" port)))
-  
-  
+    
   #+LINUX
   (inferior-shell:run
    `(xdg-open ,(format nil "http://localhost:~A/yomi" port)))
@@ -117,9 +129,6 @@
   ;; do nothing otherwise
 
   )
-
-
-
 
 
 
@@ -146,7 +155,9 @@
 	       (return port))))))
 
 
+
 (defclass yomi-resource (ws-resource) ())
+
 
 (defmethod resource-client-connected ((res yomi-resource) client)
   ;; Assume only one client allowed, no broadcasting
@@ -173,10 +184,6 @@
     result))
 
 
-;; global lock for *eval-threads-pool* management
-(defvar *global-lock* (bt:make-lock))
-(defvar *global-cv* (bt:make-condition-variable))
-
 (defmethod resource-received-text ((res yomi-resource) client msg)
   (handler-case
       (let* ((msg (json:decode-json-from-string msg))
@@ -186,6 +193,7 @@
 		   (string= command "evalk"))
 	       ;; eval
 	       (loop
+		  ;; I am implementing semaphore here
 		  ;; event loop 
 		  (bt:with-lock-held (*global-lock*)
 		    (let ((room-no (vacant-room-for-thread?)))
@@ -203,11 +211,34 @@
 								 (eval-code data))
 						(bt:with-lock-held (*global-lock*)
 						  (setf (aref *eval-threads-pool* room-no) nil)
-						  (bt:condition-notify *global-cv*)))
-					      ))))
+						  (bt:condition-notify *global-cv*)))))))
 				 (return))
 			  (bt:condition-wait *global-cv* *global-lock*))))))
-	      ;; enforce saving no matter what
+
+	      
+	      ;; Works but ugly version of the following two conditionals
+	      ;; ((or (string= command "saveFile")
+	      ;; 	   (string= command "saveFileWithCaution"))
+	      ;;  (let ((filename (string-trim '(#\space #\newline) (first data)))
+	      ;; 	     (code (rest data)))
+	      ;; 	 (macrolet ((include-supersede (&rest if-exists-supersede)
+	      ;; 		      ;; no need to invoke gensym
+	      ;; 		      `(with-open-file (s (merge-pathnames-as-file
+	      ;; 					   *notebook-files-default-directory*
+	      ;; 					   (make-pathname
+	      ;; 					    :name filename
+	      ;; 					    :type "yomi"))
+	      ;; 					  :direction :output
+	      ;; 					  ,@if-exists-supersede)
+	      ;; 			 (json:encode-json code s)
+	      ;; 			 (send-message client "systemMessage" "saved"))))
+	      ;; 	   (if (string= command "saveFile")
+	      ;; 	       (include-supersede :if-exists :supersede)
+	      ;; 	       ;; "saveFileWithCaution"
+	      ;; 	       ;; if file exists an error is thrown
+	      ;; 	       (include-supersede)))))
+
+	      ;; Stupid version of the above commented conditional
 	      ((string= command "saveFile")
 	       (let ((filename (string-trim '(#\space #\newline) (first data)))
 		     (code (rest data)))
@@ -217,13 +248,11 @@
 				      :name filename
 				      :type "yomi"))
 				    :direction :output
-				    :if-exists :supersede)
-		   ;; todo: send message to the client
+				    :if-exists :supersede) ; the only difference
 		   (json:encode-json code s)
-		   (send-message client "systemMessage" "saved")
-		   )))
+		   (send-message client "systemMessage" "saved"))))
+	      ;; throws an error if the file exists
 	      ((string= command "saveFileWithCaution")
-	       ;; if file exists an error is thrown
 	       (let ((filename (string-trim '(#\space #\newline) (first data)))
 		     (code (rest data)))
 		 (with-open-file (s (merge-pathnames-as-file
@@ -233,21 +262,18 @@
 				      :type "yomi"))
 				    :direction :output)
 		   (json:encode-json code s)
-		   (send-message client "systemMessage" "saved")
-
-		   )))
-
-
+		   (send-message client "systemMessage" "saved"))))
 	      
+
+
 	      ((string= command "loadFile")
 	       (with-open-file (s (merge-pathnames-as-file
 				   *notebook-files-default-directory*
 				   data))
 		 (send-message
 		  client "code"
-		  (json:decode-json s)))
-
-	       )
+		  (json:decode-json s))))
+	      
 
 	      ((string= command "interrupt")
 	       ;; stop all processes
@@ -271,10 +297,7 @@
       (send-message
        client
        "systemError"
-       (format nil "SYSTEM ERROR: ~A" c))))
-
-  )
-
+       (format nil "SYSTEM ERROR: ~A" c)))))
 
 
 
@@ -284,9 +307,7 @@
    (json:encode-json-to-string
     (make-instance 'message
 		   :command command
-		   :data data)))
-
-  )
+		   :data data))))
 
 
 
@@ -305,11 +326,13 @@
 		      standard-output)
 		  
 		  ;; only comments
+		  ;; listize side effects when an error is thrown
+		  ;; for comparison
 		  (end-of-file () (list (format nil "")))
 		  (error (c) (list (format nil "ERROR: ~A" c)))
 
 		  )))
-	   (cond ((listp side-effect)	; error
+	   (cond ((listp side-effect)	; errored case
 		  (list cell-no
 			(make-instance 'message
 				       :command "error"
@@ -355,6 +378,8 @@
 (defun shorten-file-name (file)
   (format nil "/~A.~A" (pathname-name file)
 	  (pathname-type file)))
+
+
 
 (defun publish-static-content ()
   ;; initialize, may not be necessary.
