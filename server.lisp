@@ -8,9 +8,19 @@
   (make-array
    *max-eval-threads*
    :initial-element nil))
+
 (defvar *global-lock* (bt:make-lock))
 (defvar *global-cv* (bt:make-condition-variable))
 
+
+(defvar *message-handling-function-set*
+  (make-hash-table :test #'equal))
+
+
+(defmacro handle-message ((client command data) &body body)
+  `(setf (gethash ,command *message-handling-function-set*)
+	 #'(lambda (,client ,data)
+	     ,@body)))
 
 
 (defclass message ()
@@ -52,6 +62,106 @@
 
 ;; 3. command: systemError (file IO/threads realated errors)
 ;;    data: a string
+
+
+(handle-message (client "eval" data)
+  (loop
+     ;; I am implementing semaphore here
+     ;; event loop 
+     (bt:with-lock-held (*global-lock*)
+       (let ((room-no (vacant-room-for-thread?)))
+	 (if room-no
+	     (progn (setf (aref *eval-threads-pool* room-no)
+			  (bt:make-thread
+			   ;; rebinding variables
+			   (let ((data data) (room-no room-no))
+			     #'(lambda ()
+				 (unwind-protect
+				      (send-message client
+						    "evaled"
+						    (eval-code data))
+				   (bt:with-lock-held (*global-lock*)
+				     (setf (aref *eval-threads-pool* room-no) nil)
+				     (bt:condition-notify *global-cv*)))))))
+		    (return))
+	     (bt:condition-wait *global-cv* *global-lock*))))))
+
+
+;; It may look code duplication, but
+;; you never know what's going to happen later
+;; evaluation by keyboard shortcut
+(handle-message (client "evalk" data)
+  (loop
+     (bt:with-lock-held (*global-lock*)
+       (let ((room-no (vacant-room-for-thread?)))
+	 (if room-no
+	     (progn (setf (aref *eval-threads-pool* room-no)
+			  (bt:make-thread
+			   ;; rebinding variables
+			   (let ((data data) (room-no room-no))
+			     #'(lambda ()
+				 (unwind-protect
+				      (send-message client
+						    "evaledk" ; <- the only difference
+						    (eval-code data))
+				   (bt:with-lock-held (*global-lock*)
+				     (setf (aref *eval-threads-pool* room-no) nil)
+				     (bt:condition-notify *global-cv*)))))))
+		    (return))
+	     (bt:condition-wait *global-cv* *global-lock*))))))
+
+
+
+(handle-message (client "saveFile" data)
+  (let ((filename (string-trim '(#\space #\newline) (first data)))
+	(code (rest data)))
+    (with-open-file (s (merge-pathnames-as-file
+			*notebook-files-default-directory*
+			(make-pathname
+			 :name filename
+			 :type "yomi"))
+		       :direction :output
+		       :if-exists :supersede) ; the only difference
+      (json:encode-json code s)
+      (send-message client "systemMessage" "saved"))))
+
+
+
+(handle-message (client "saveFileWithCaution" data)
+  (let ((filename (string-trim '(#\space #\newline) (first data)))
+	(code (rest data)))
+    (with-open-file (s (merge-pathnames-as-file
+			*notebook-files-default-directory*
+			(make-pathname
+			 :name filename
+			 :type "yomi"))
+		       :direction :output)
+      (json:encode-json code s)
+      (send-message client "systemMessage" "saved"))))
+
+
+
+(handle-message (client "loadFile" data)
+  (with-open-file (s (merge-pathnames-as-file
+		      *notebook-files-default-directory*
+		      data))
+    (send-message
+     client "code"
+     (json:decode-json s))))
+
+
+(handle-message (client "interrupt" data)
+  (declare (ignore data))
+  (loop for thread across *eval-threads-pool*
+     for i from 0 do
+       (when (and (bt:threadp thread)
+		  (bt:thread-alive-p thread))
+	 (bt:destroy-thread thread))
+     ;; nullify
+       (setf (aref *eval-threads-pool* i) nil)
+       (send-message client "systemMessage" "interrupted")))
+
+
 
 
 (defun start-yomi (&key
@@ -190,120 +300,26 @@
     result))
 
 
+
 (defmethod resource-received-text ((res yomi-resource) client msg)
   (handler-case
       (let* ((msg (json:decode-json-from-string msg))
 	     (command (cdr (assoc :command msg)))
 	     (data (cdr (assoc :data msg))))
-	(cond ((or (string= command "eval")
-		   (string= command "evalk"))
-	       ;; eval
-	       (loop
-		  ;; I am implementing semaphore here
-		  ;; event loop 
-		  (bt:with-lock-held (*global-lock*)
-		    (let ((room-no (vacant-room-for-thread?)))
-		      (if room-no
-			  (progn (setf (aref *eval-threads-pool* room-no)
-				       (bt:make-thread
-					;; rebinding variables
-					(let ((data data) (room-no room-no))
-					  #'(lambda ()
-					      (unwind-protect
-						   (send-message client
-								 (if (string= command "eval")
-								     "evaled"
-								     "evaledk")
-								 (eval-code data))
-						(bt:with-lock-held (*global-lock*)
-						  (setf (aref *eval-threads-pool* room-no) nil)
-						  (bt:condition-notify *global-cv*)))))))
-				 (return))
-			  (bt:condition-wait *global-cv* *global-lock*))))))
 
-	      
-	      ;; Works but ugly version of the following two conditionals
-	      ;; ((or (string= command "saveFile")
-	      ;; 	   (string= command "saveFileWithCaution"))
-	      ;;  (let ((filename (string-trim '(#\space #\newline) (first data)))
-	      ;; 	     (code (rest data)))
-	      ;; 	 (macrolet ((include-supersede (&rest if-exists-supersede)
-	      ;; 		      ;; no need to invoke gensym
-	      ;; 		      `(with-open-file (s (merge-pathnames-as-file
-	      ;; 					   *notebook-files-default-directory*
-	      ;; 					   (make-pathname
-	      ;; 					    :name filename
-	      ;; 					    :type "yomi"))
-	      ;; 					  :direction :output
-	      ;; 					  ,@if-exists-supersede)
-	      ;; 			 (json:encode-json code s)
-	      ;; 			 (send-message client "systemMessage" "saved"))))
-	      ;; 	   (if (string= command "saveFile")
-	      ;; 	       (include-supersede :if-exists :supersede)
-	      ;; 	       ;; "saveFileWithCaution"
-	      ;; 	       ;; if file exists an error is thrown
-	      ;; 	       (include-supersede)))))
-
-	      ;; Stupid version of the above commented conditional
-	      ((string= command "saveFile")
-	       (let ((filename (string-trim '(#\space #\newline) (first data)))
-		     (code (rest data)))
-		 (with-open-file (s (merge-pathnames-as-file
-				     *notebook-files-default-directory*
-				     (make-pathname
-				      :name filename
-				      :type "yomi"))
-				    :direction :output
-				    :if-exists :supersede) ; the only difference
-		   (json:encode-json code s)
-		   (send-message client "systemMessage" "saved"))))
-	      ;; throws an error if the file exists
-	      ((string= command "saveFileWithCaution")
-	       (let ((filename (string-trim '(#\space #\newline) (first data)))
-		     (code (rest data)))
-		 (with-open-file (s (merge-pathnames-as-file
-				     *notebook-files-default-directory*
-				     (make-pathname
-				      :name filename
-				      :type "yomi"))
-				    :direction :output)
-		   (json:encode-json code s)
-		   (send-message client "systemMessage" "saved"))))
-	      
-
-
-	      ((string= command "loadFile")
-	       (with-open-file (s (merge-pathnames-as-file
-				   *notebook-files-default-directory*
-				   data))
-		 (send-message
-		  client "code"
-		  (json:decode-json s))))
-	      
-
-	      ((string= command "interrupt")
-	       ;; stop all processes
-	       ;; it means all evaluation requests from opened clients.
-	       (loop for thread across *eval-threads-pool*
-		  for i from 0 do
-		    (when (and (bt:threadp thread)
-			       (bt:thread-alive-p thread))
-		      (bt:destroy-thread thread))
-		  ;; nullify
-		    (setf (aref *eval-threads-pool* i) nil))
-	       (send-message client "systemMessage" "interrupted"))))
-
+	(funcall (gethash command *message-handling-function-set*) client data))
+    
     (json:json-syntax-error (c)
       (send-message
        client
        "systemError"
        (format nil "INVALID YOMIFILE: ~A" c)))
-    
     (error (c)
       (send-message
        client
        "systemError"
        (format nil "SYSTEM ERROR: ~A" c)))))
+
 
 
 
@@ -315,9 +331,6 @@
 		   :command command
 		   :data data))))
 
-
-
-
 (defun eval-code (data)
   (loop
      for (cell-no cell-content) in data collect
@@ -327,17 +340,13 @@
 		    (let ((standard-output
 			   (with-output-to-string (*standard-output*)
 			     (setf evaled-value
-				   (eval-with-prelude cell-content)
-				   ))))
+				   (eval-with-prelude cell-content)))))
 		      standard-output)
-		  
 		  ;; only comments
 		  ;; listize side effects when an error is thrown
 		  ;; for comparison
 		  (end-of-file () (list (format nil "")))
-		  (error (c) (list (format nil "ERROR: ~A" c)))
-
-		  )))
+		  (error (c) (list (format nil "ERROR: ~A" c))))))
 	   (cond ((listp side-effect)	; errored case
 		  (list cell-no
 			(make-instance 'message
@@ -347,17 +356,24 @@
 		 
 		 (t
 		  (list cell-no
-			(cond ((eql (type-of evaled-value) 'chart)
-			       (make-instance 'message
-					      :command "drawChart"
-					      :data evaled-value))
-			      
-			      ;; All the rest are converted to strings
-			      (t
-			       (make-instance 'message
-					      :command "text"
-					      :data (format nil "~A" evaled-value))))
+			;; 
+			(build-to-send-message evaled-value)
 			side-effect)))))))
+
+
+;; <-- for future extension
+(defmethod build-to-send-message ((evaled-value chart))
+  (make-instance 'message
+		 :command "drawChart"
+		 :data evaled-value))
+
+(defmethod build-to-send-message ((evaled-value t))
+  (make-instance 'message
+		 :command "text"
+		 :data (format nil "~A" evaled-value)))
+
+
+
 
 
 (defmethod resource-received-binary ((res yomi-resource) client message)

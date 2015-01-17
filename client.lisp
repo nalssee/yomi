@@ -459,107 +459,125 @@
 		 (chain document (get-element-by-id "rename_input") value)))))
     
 
+    ;; for future easy extension
+    (defvar message-handling-function-set (create))
+    
+    (setf (getprop message-handling-function-set "evaled")
+	  (lambda (data)
+	    (let ((first-eval-cell-position (first (first data)))
+		  (last-eval-cell-position  (first (last1 data))))
+	      (loop for (nil evaled-value stdout) in data 
+		 for cell in (chain all-cells (slice first-eval-cell-position)) do
+		   (render-result cell evaled-value stdout))
+	      (focus-to-next-cell (getprop all-cells last-eval-cell-position))
+	      (auto-scroll))))
+
+    (setf (getprop message-handling-function-set "evaledk")
+	  (lambda (data)
+	    (let ((first-eval-cell-position (first (first data)))
+		  (last-eval-cell-position  (first (last1 data))))
+	      (loop for (nil evaled-value stdout) in data 
+		 for cell in (chain all-cells (slice first-eval-cell-position)) do
+		   (render-result cell evaled-value stdout))
+	      ;; focus-to-next-cell is not invoked here
+	      )))    
+    (setf (getprop message-handling-function-set "code")
+	  ;; set values to cells
+	  (lambda (data)
+	    (chain (getprop (first-cell) 'editor) (get-doc) (set-value (getprop data 0)))
+	    (loop for exp in (chain data (slice 1)) do
+		 (chain (getprop (make-cell) 'editor)
+			(get-doc) (set-value exp)))
+	    (get-it-focused (first-cell))
+	    (eval-forward)
+	    (change-title)))
+
+    (setf (getprop message-handling-function-set "systemError")
+	  ;; set values to cells
+	  (lambda (data)
+	    (blink-rename_span "SYSTEM ERROR")
+	    (let ((fc (first-cell)))
+	      (clear-result-area fc)
+	      (setf (chain (getprop fc 'result-area)
+			   |innerHTML|) data)
+	      (get-it-focused fc))))
+
+    (setf (getprop message-handling-function-set "systemMessage")
+	  ;; set values to cells
+	  (lambda (data)
+	    (cond ((= data "saved")
+		   (setf ever-been-saved 1)
+		   (blink-rename_span "Saved Successfully!!")
+		   (change-title))
+		  ((= data "interrupted")
+		   (blink-rename_span "Interrupted!!")))))
+
+
+        
+    
     
     (defun handle-message (msg)
       (let* ((json-msg (chain +JSON+ (parse msg)))
 	     (command (chain json-msg command))
 	     (data (chain json-msg data)))
-	(cond
-	  ((or (= command "evaled")
-	       (= command "evaledk"))
-	   ;; data is guaranteed to be not null
+	((getprop message-handling-function-set command) data)))
 
-	   (let ((first-eval-cell-position
-		  (first (first data)))
-		 (last-eval-cell-position
-		  (first (last1 data))))
-	     (loop for (nil evaled-value stdout) in data 
-		for cell in (chain all-cells (slice first-eval-cell-position)) do
-		  (render-result cell evaled-value stdout))
-	     (when (= command "evaled")  
-	       (focus-to-next-cell (getprop all-cells last-eval-cell-position))
-	       (auto-scroll)
-	       )))
-	  
-	  ;; load file
-	  ((= command "code")
-	   ;; set values to cells
-	   (chain (getprop (first-cell) 'editor) (get-doc) (set-value (getprop data 0)))
-	   (loop for exp in (chain data (slice 1)) do
-		(chain (getprop (make-cell) 'editor)
-		       (get-doc) (set-value exp)))
-	   ;; 
-	   (get-it-focused (first-cell))
-	   (eval-forward)
-	   (change-title)
-	   
-	   
-	   )
-	  
-	  ;; system error is simply displayed in the first cell
-	  ((= command "systemError")
-	   (blink-rename_span "SYSTEM ERROR")
-	   (let ((fc (first-cell)))
-	     (clear-result-area fc)
-	     (setf (chain (getprop fc 'result-area)
-			  |innerHTML|) data)
-	     (get-it-focused fc)))
-
-	  ((= command "systemMessage")
-	   (cond ((= data "saved")
-		  (setf ever-been-saved 1)
-		  (blink-rename_span "Saved Successfully!!")
-		  (change-title)
-		  )
-		 ((= data "interrupted")
-		  (blink-rename_span "Interrupted!!"))))
-	  
-	  ;; won't ever happend
-	  (t (alert "Unknown Command")))))
+    
 
     (defun clear-result-area (cell)
       (setf (chain (getprop cell 'result-area) |innerHTML|)
-	    ""))
+	    ""
+	    ))
 
+
+    (defvar rendering-function-set (create))
+    
+    (setf (getprop rendering-function-set "drawChart")
+	  (lambda (cell data stdout)
+	    (let ((div (getprop cell 'result-area)))
+	      (clear-result-area cell)
+	      ;; write standard output if exists
+	      (unless (= stdout null)
+		(let ((p (chain document (create-element "p"))))
+		  ;; "pre-wrap" may not be inherited
+		  ;; check it out
+		  (chain div (append-child p))
+		  (setf (chain p |innerHTML|) stdout)))
+	      (let ((inner-div (chain document (create-element "div"))))
+		(chain div (append-child inner-div))
+		;; set size of the pane
+		(setf (@ inner-div style width)
+		      (+ (chain data width (to-string)) "px"))
+		(setf (@ inner-div style height)
+		      (+ (chain data height (to-string)) "px"))
+		(setf (@ inner-div title) (@ data title))
+		(draw-chart inner-div
+			    (@ data series-list)
+			    (@ data options))))))
+
+    (setf (getprop rendering-function-set "text")
+	  (lambda (cell data stdout)
+	    (let ((div (getprop cell 'result-area)))
+	      (clear-result-area cell)
+	      (setf (chain div |innerHTML|)
+		    (if (= stdout "")
+			data
+			(chain "{0}<br>{1}" (format stdout data)))))))
+
+
+    (setf (getprop rendering-function-set "error")
+	  (lambda (cell data stdout)
+	    (let ((div (getprop cell 'result-area)))
+	      (clear-result-area cell)
+	      (setf (chain div |innerHTML|) data))))    
+    
+
+    
     ;; don't worry about cell focusing here
     (defun render-result (cell evaled-value stdout)
       (let ((command (chain evaled-value command))
 	    (data (chain evaled-value data)))
-	(cond ((= command "drawChart")
-	       (let ((div (getprop cell 'result-area)))
-		 (clear-result-area cell)
-		 ;; write standard output if exists
-		 (unless (= stdout null)
-		   (let ((p (chain document (create-element "p"))))
-		     ;; "pre-wrap" may not be inherited
-		     ;; check it out
-		     (chain div (append-child p))
-		     (setf (chain p |innerHTML|) stdout)))
-		 (let ((inner-div (chain document (create-element "div"))))
-		   (chain div (append-child inner-div))
-		   ;; set size of the pane
-		   (setf (@ inner-div style width)
-			 (+ (chain data width (to-string)) "px"))
-		   (setf (@ inner-div style height)
-			 (+ (chain data height (to-string)) "px"))
-		   (setf (@ inner-div title) (@ data title))
-		   (draw-chart inner-div
-			       (@ data series-list)
-			       (@ data options)))))
-	      
-
-	      ((= command "text")
-	       (let ((div (getprop cell 'result-area)))
-		 (clear-result-area cell)
-		 (setf (chain div |innerHTML|)
-		       (if (= stdout "")
-			   data
-			   (chain "{0}<br>{1}" (format stdout data))))))
-	      
-	      ((= command "error")
-	       (let ((div (getprop cell 'result-area)))
-		 (clear-result-area cell)
-		 (setf (chain div |innerHTML|) data))))))
+	((getprop rendering-function-set command) cell data stdout)))
 
 
     
@@ -568,7 +586,7 @@
 	    (lisp
 	     (format nil "ws://127.0.0.1:~A~A"
 		     *web-socket-port* *ws-loc*)))))
-
+    
     (setf (chain ws onopen)
 	  (lambda ()
 	    (make-cell)
@@ -595,13 +613,11 @@
 	    (change-title)
 	    (console.log "Openning connection to websocket")))    
 
-    
     (setf (chain ws onmessage)
 	  (lambda (event)
-	    (handle-message (chain event data))))))
+	    (handle-message (chain event data)))))
+  )
 
-
-    
 
     
 
