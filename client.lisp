@@ -421,10 +421,10 @@
 	))
 
    
-    (defun draw-chart (place data options)
-      (chain ($ document)
-	     (ready (lambda ()
-		      (chain $ (plot place data options))))))
+     (defun draw-chart (place data options)
+       (chain ($ document)
+	      (ready (lambda ()
+		       (chain $ (plot place data options))))))
     
     (defun cutout-extension (filename)
       (let ((splited  (chain filename (split "."))))
@@ -513,7 +513,7 @@
 		   (blink-rename_span "Interrupted!!")))))
 
 
-        
+    
     
     
     (defun handle-message (msg)
@@ -564,12 +564,23 @@
 			data
 			(chain "{0}<br>{1}" (format stdout data)))))))
 
+    
+    (setf (getprop rendering-function-set "code")
+	  (lambda (cell data stdout)
+	    (loop for d1 in data do
+		  (let* ((c1 (make-cell cell)))
+		    (chain (getprop c1 'editor) (get-doc) (set-value d1))))
+	    (focus-to-next-cell cell)
+	    (eval-forward)))
+    
+    
+
 
     (setf (getprop rendering-function-set "error")
 	  (lambda (cell data stdout)
 	    (let ((div (getprop cell 'result-area)))
 	      (clear-result-area cell)
-	      (setf (chain div |innerHTML|) data))))    
+	      (setf (chain div |innerHTML|) data)))) 
     
 
     

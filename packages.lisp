@@ -9,6 +9,7 @@ Yomi package
    :make-chart
    :*max-eval-threads*
    :*keymap*
+   :demo
    ))
 
 
@@ -18,4 +19,6 @@ Yomi package
   (:import-from
    :yomi
    :make-chart
-   :make-series))
+   :make-series
+   :demo
+   ))

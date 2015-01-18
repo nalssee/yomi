@@ -373,6 +373,12 @@
 		 :data (format nil "~A" evaled-value)))
 
 
+(defmethod build-to-send-message ((evaled-value code))
+  (make-instance 'message
+		 :command "code"
+		 :data (codelist evaled-value)))
+
+
 
 
 

@@ -20,6 +20,7 @@
 	       (:file "packages")
 	       (:file "parameters")
 	       (:file "plot")
+	       (:file "demo")
 	       (:file "client")
 	       (:file "server")
 	       

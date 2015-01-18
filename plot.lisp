@@ -27,6 +27,8 @@
    ;; default: no lines
    (lines :initarg :lines
 	  :initform '((show . nil)))
+   (bars :initarg :bars
+	 :initform '((show . nil)))
 
 
    (color :initarg :color :initform "red"
@@ -91,7 +93,8 @@
 			   (symbol "circle")
 			   ;; no lines default
 			   (points t)
-			   (lines nil))
+			   (lines nil)
+			   (bars nil))
   "symbol: circle, diamond, triangle, square, cross
    as for colors refer to *color-list* variable
   "
@@ -108,7 +111,13 @@
 					;; are better be the same
 					:fill-color color)
 		 :color color
-		 :lines `((show . ,lines))))
+		 :lines `((show . ,lines))
+		 :bars `((show . ,bars))
+
+		 ))
+
+
+
 
 
 
