@@ -1,4 +1,5 @@
 ## YOMI
+Common Lisp version of iPython notebook
 
 ## Tested
 OS: MACOS X, Linux
