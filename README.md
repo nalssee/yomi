@@ -14,6 +14,8 @@ Web browsers: Recent versions of Google Chrome, Firefox and Safari, must support
 
 \*max-eval-threads\* : maximum number of evaluation threads
 
+\*working-directory\* : working-directory
+
 ## Keyboard Shortcut
 Ctrl-Return : Evaluate focused cell
 

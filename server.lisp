@@ -116,7 +116,7 @@
   (let ((filename (string-trim '(#\space #\newline) (first data)))
 	(code (rest data)))
     (with-open-file (s (merge-pathnames-as-file
-			*notebook-files-default-directory*
+			(fad:pathname-as-directory *working-directory*)
 			(make-pathname
 			 :name filename
 			 :type "yomi"))
@@ -131,7 +131,7 @@
   (let ((filename (string-trim '(#\space #\newline) (first data)))
 	(code (rest data)))
     (with-open-file (s (merge-pathnames-as-file
-			*notebook-files-default-directory*
+			(fad:pathname-as-directory *working-directory*)
 			(make-pathname
 			 :name filename
 			 :type "yomi"))
@@ -143,7 +143,7 @@
 
 (handle-message (client "loadFile" data)
   (with-open-file (s (merge-pathnames-as-file
-		      *notebook-files-default-directory*
+		      (fad:pathname-as-directory *working-directory*)
 		      data))
     (send-message
      client "code"
@@ -164,8 +164,12 @@
 
 
 
+
+
 (defun start-yomi (&key
-		     (working-directory *notebook-files-default-directory*)
+		     (working-directory
+		      (fad:pathname-as-directory
+		       *working-directory*))
 		     (max-eval-threads *max-eval-threads*))
   
   ;; server preparation
@@ -177,7 +181,7 @@
     (format t "~%Exiting...")
     (return-from start-yomi))
   
-  (setf *notebook-files-default-directory* working-directory)
+  (setf *working-directory* working-directory)
 
   ;; I have no idea of "how many threads" is too many but
   ;; 100 seems to me too many.

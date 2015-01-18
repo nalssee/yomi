@@ -7,6 +7,7 @@ Yomi package
    :start-yomi
    :make-series
    :make-chart
+   :*working-directory*
    :*max-eval-threads*
    :*keymap*
    :demo

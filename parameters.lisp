@@ -8,8 +8,13 @@
 (defvar *ws-loc* "/ws_yomi")
 
 (defparameter *server-running-p* nil)
-(defparameter *notebook-files-default-directory*
+   
+
+;; renaming
+(defparameter *working-directory*
   (merge-pathnames-as-directory (user-homedir-pathname) #p"Desktop/"))
+
+
 
 (defvar *notebook-clients* nil)
 

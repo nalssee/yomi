@@ -21,6 +21,7 @@
 	       (:file "parameters")
 	       (:file "plot")
 	       (:file "demo")
+	       (:file "utils")
 	       (:file "client")
 	       (:file "server")
 	       
