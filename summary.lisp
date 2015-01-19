@@ -15,7 +15,14 @@
    :codelist
    (mapcar #'code->string
 	   (progn (let (result)
-		    (in-package :ynb)
+
+		    #+SBCL
+		    (EVAL-WHEN (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+		      (SETQ *PACKAGE*
+			    (SB-INT:FIND-UNDELETED-PACKAGE-OR-LOSE *DEFAULT-WORKING-PACKAGE*)))
+		    #+CCL
+		    (EVAL-WHEN (:EXECUTE :LOAD-TOPLEVEL :COMPILE-TOPLEVEL)
+		      (CCL::SET-PACKAGE *DEFAULT-WORKING-PACKAGE*))
 		    (setf result codelist)
 		    (in-package :yomi)
 		    result)))))
@@ -67,8 +74,6 @@
 	       :title "Coin Throw"
 	       :xlabel "out of 100"
 	       :ylabel "out of 3000")))
-
-     
      
      
      (progn
@@ -80,9 +85,27 @@
 			 (samplot 300 100))
 		   (samplot 180 233)
 		   (samplot 200 233))
-	     (samplot 674 100))))))
+	     (samplot 674 100)))
+     (progn
+      (ql:quickload "alexandria")
+      (defpackage :foo
+	(:use :cl :yomi :alexandria))
+      (set-package :foo)
+      (format t "You can use functions in alexandria package once this cell is evaluated"))
+     
+     (flatten '((3) 4 ((5 (6)) 7)))
 
+     (progn
+       (format t "Set it back to ynb")
+       (set-package :ynb))
 
+     (progn
+       (format t "And flatten can't be used directly anymore")
+       (format t "~%So you will see an error message")       
+       (flatten '((3) 4)))
+     
+     
+     )))
 
 
 

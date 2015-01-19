@@ -32,6 +32,11 @@
   (asdf:system-source-directory 'yomi))
 
 
+(defparameter *default-working-package* "YNB")
+
+
+
+
 
 ;; 
 (defparameter *js-css-files*

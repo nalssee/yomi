@@ -584,6 +584,7 @@
 		   (let* ((c1 (make-cell focused-cell)))
 		     (chain (getprop c1 'editor) (get-doc) (set-value d1))))
 	      (focus-to-next-cell first-cell)
+	      ;; <- might not be perfect but I'll just leave it be
 	      (eval-forward))))
     
 

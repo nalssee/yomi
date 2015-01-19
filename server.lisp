@@ -30,7 +30,8 @@
 	(error "Keymap must of one of ~S, ~S, or ~S, given ~A"
 	       "emacs" "vim" "sublime" editor))))
 
-
+(defun set-package (package)
+  (setf *default-working-package* (string-upcase (string package))))
 
 
 (defmacro handle-message ((client command data) &body body)
@@ -434,28 +435,26 @@
 
 
 
-
-
-
-
-
-
-
 (defmethod resource-received-binary ((res yomi-resource) client message)
   (format t "got binary frame ~s from client ~s" (length message) client))
 
 
-
-(defun enclose-code-with-prelude (str)
-  (format nil "(progn (in-package :ynb)  ~A)" str))
 
 
 ;; todo
 ;; <- must be studied further
 (defun eval-with-prelude (str)
   (let (result)
-    (in-package :ynb)
+    #+SBCL
+    (EVAL-WHEN (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+      (SETQ *PACKAGE*
+	    (SB-INT:FIND-UNDELETED-PACKAGE-OR-LOSE *DEFAULT-WORKING-PACKAGE*)))
+    #+CCL
+    (EVAL-WHEN (:EXECUTE :LOAD-TOPLEVEL :COMPILE-TOPLEVEL)
+      (CCL::SET-PACKAGE *DEFAULT-WORKING-PACKAGE*))
+
     (setf result (eval (read-from-string (format nil "(progn ~A)" str))))
+    
     (in-package :yomi)
     result))
 

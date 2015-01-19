@@ -1,6 +1,6 @@
-#|
-Yomi package
-|#
+
+
+
 (defpackage :yomi
   (:use :cl :parenscript :cl-who :hunchentoot :clws :cl-fad)
   (:export
@@ -8,29 +8,20 @@ Yomi package
    :series
    :plot
    :hist
-   :*working-directory*
-   :*max-eval-threads*
-   :*keymap*
    :demo
    :cd
    :pack
    :keymap
-   
+   :set-package
+   :make-code
    ))
 
 
-
-;; package for yomi notebook
 (defpackage :ynb
-  (:use :cl)
-  (:import-from
-   :yomi
-   :plot
-   :series
-   :hist
-   :demo
-   :cd
-   :pack
-   :keymap
-   ))
+  (:use :cl :yomi))
+
+
+
+
+
 
