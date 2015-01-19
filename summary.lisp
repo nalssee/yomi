@@ -29,6 +29,18 @@
      
      (plot (series (loop repeat 100 collect (list (random 10.0)
 						  (random 20.0)))))
+     ;; 
+     (progn
+       (format t "sin(x) and cos(x) from 0 to 2*pi")
+       (plot (series (loop for i from 0 to (* 2 pi) by 0.1 collect
+			  (list i (sin i))) :lines t :points nil :color "blue"
+			  :label "sin(x)")
+	     (series (loop for i from 0 to (* 2 pi) by 0.1 collect
+			  (list i (cos i))) :lines t :points nil :color "red"
+			  :label "cos(x)")
+	     :xlabel "Radian"))
+
+     
      (plot
       (series '((1 2) (2 3) (5 2) (9 4))
        :lines t
@@ -40,6 +52,8 @@
       :title "Sample Chart" :width 600 :height 200
       :xlabel "x axis" :ylabel "y axis" :xrange '(0 12)
       :yrange '(0 6))
+
+     
 
      (progn
        (defun throw-coins (n)
