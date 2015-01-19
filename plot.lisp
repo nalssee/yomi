@@ -58,7 +58,6 @@
 	(kv-pairs (remove-if-not
 		   (lambda (x) (not (eql (type-of x) 'series)))
 		   xs)))
-    (format (load-time-value *standard-output*) "~%~A" series-list)
     (let ((title (getf kv-pairs :title))
 	  (width (or (getf kv-pairs :width) 400))
 	  (height (or (getf kv-pairs :height) 225))
