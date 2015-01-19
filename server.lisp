@@ -24,8 +24,9 @@
 
 (defun keymap (editor)
   (let ((editor (string-downcase editor)))
-    (if (member editor (list "emacs" "vim" "sublime"))
-	(setf *keymap* editor)
+    (if (member editor (list "emacs" "vim" "sublime") :test #'equal)
+	(progn (setf *keymap* editor)
+	       (format nil "Keymap changed to ~A~%Relaod the page" editor))
 	(error "Keymap must of one of ~S, ~S, or ~S, given ~A"
 	       "emacs" "vim" "sublime" editor))))
 
@@ -104,7 +105,7 @@
 
 ;; It may look code duplication, but
 ;; you never know what's going to happen later
-;; evaluation by keyboard shortcut
+;; evaluation by keyoard shortcut
 (handle-message (client "evalk" data)
   (loop
      (bt:with-lock-held (*global-lock*)
