@@ -274,8 +274,6 @@
 	    (saved-span (chain document (get-element-by-id "rename_save"))))
 	(unless (= (chain saved-span |innerHTML|)
 		   (chain input value))
-	  (console.log  (chain saved-span |innerHTML|))
-	  (console.log  (chain input value))
 	  (setf ever-been-saved 0))
 	(setf (chain span |innerHTML|)
 	      (chain input value))
@@ -333,6 +331,8 @@
 	;; But I will just leave it be for this experiental phase.
 	
 	;; style
+;; 	(setf (chain resultarea style overflow) "auto")
+	
 	(setf (chain div-main style border-style) "solid")
 	(setf (chain div-main style border-radius) "0.5em")
 	;; invisible border
@@ -461,6 +461,7 @@
 
     ;; for future easy extension
     (defvar message-handling-function-set (create))
+
     
     (setf (getprop message-handling-function-set "evaled")
 	  (lambda (data)
@@ -468,7 +469,7 @@
 		  (last-eval-cell-position  (first (last1 data))))
 	      (loop for (nil evaled-value stdout) in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
-		   (render-result cell evaled-value stdout))
+		   (render-result (getprop cell 'result-area) evaled-value stdout))
 	      (focus-to-next-cell (getprop all-cells last-eval-cell-position))
 	      (auto-scroll))))
 
@@ -478,7 +479,7 @@
 		  (last-eval-cell-position  (first (last1 data))))
 	      (loop for (nil evaled-value stdout) in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
-		   (render-result cell evaled-value stdout))
+		   (render-result (getprop cell 'result-area) evaled-value stdout))
 	      ;; focus-to-next-cell is not invoked here
 	      )))    
     (setf (getprop message-handling-function-set "code")
@@ -524,71 +525,107 @@
 
     
 
-    (defun clear-result-area (cell)
-      (setf (chain (getprop cell 'result-area) |innerHTML|)
-	    ""
-	    ))
+    (defun clear-result-area (result-area)
+      (setf (chain result-area |innerHTML|) ""))
 
 
     (defvar rendering-function-set (create))
+
     
     (setf (getprop rendering-function-set "drawChart")
-	  (lambda (cell data stdout)
-	    (let ((div (getprop cell 'result-area)))
-	      (clear-result-area cell)
-	      ;; write standard output if exists
-	      (unless (= stdout null)
-		(let ((p (chain document (create-element "p"))))
-		  ;; "pre-wrap" may not be inherited
-		  ;; check it out
-		  (chain div (append-child p))
-		  (setf (chain p |innerHTML|) stdout)))
-	      (let ((inner-div (chain document (create-element "div"))))
-		(chain div (append-child inner-div))
-		;; set size of the pane
-		(setf (@ inner-div style width)
-		      (+ (chain data width (to-string)) "px"))
-		(setf (@ inner-div style height)
-		      (+ (chain data height (to-string)) "px"))
+	  (lambda (result-area data stdout)
+	    (clear-result-area result-area)
+	    ;; write standard output if exists	    
+	    (unless (= stdout null)
+	      (let ((p (chain document (create-element "p"))))
+		;; "pre-wrap" may not be inherited
+		;; check it out
+		(chain result-area (append-child p))
+		(setf (chain p |innerHTML|) stdout)))
+	    (let ((inner-div (chain document (create-element "div"))))
+	      
+
+	      
+	      (chain result-area (append-child inner-div))
+	      ;; set size of the pane
+	      (setf (@ inner-div style width)
+		    (+ (chain data width (to-string)) "px"))
+	      (setf (@ inner-div style height)
+		    (+ (chain data height (to-string)) "px"))
+	      (draw-chart inner-div
+			  (@ data series-list)
+			  (@ data options))
+	      ;; write title if exists
+	      (unless (= (@ data title) null)
+		
 		(setf (@ inner-div title) (@ data title))
-		(draw-chart inner-div
-			    (@ data series-list)
-			    (@ data options))))))
+		(let ((title-element (chain document (create-element "div"))))
+		  (setf (@ title-element style width)
+			(+ (chain data width (to-string)) "px"))
+		  (chain result-area (append-child title-element))
+		  (setf (chain title-element align) "center")
+		  (setf (chain title-element |innerHTML|) (@ data title))))
+	      )))
+
 
     (setf (getprop rendering-function-set "text")
-	  (lambda (cell data stdout)
-	    (let ((div (getprop cell 'result-area)))
-	      (clear-result-area cell)
-	      (setf (chain div |innerHTML|)
-		    (if (= stdout "")
-			data
-			(chain "{0}<br>{1}" (format stdout data)))))))
-
+	  (lambda (result-area data stdout)
+	    (clear-result-area result-area)
+	    (setf (chain result-area |innerHTML|)
+		  (if (= stdout "")
+		      data
+		      (chain "{0}<br>{1}" (format stdout data))))))
+    
     
     (setf (getprop rendering-function-set "code")
-	  (lambda (cell data stdout)
-	    (loop for d1 in data do
-		  (let* ((c1 (make-cell cell)))
-		    (chain (getprop c1 'editor) (get-doc) (set-value d1))))
-	    (focus-to-next-cell cell)
-	    (eval-forward)))
+	  (lambda (result-area data stdout)
+	    (let ((first-cell focused-cell))
+	      (loop for d1 in data do
+		   (let* ((c1 (make-cell focused-cell)))
+		     (chain (getprop c1 'editor) (get-doc) (set-value d1))))
+	      (focus-to-next-cell first-cell)
+	      (eval-forward))))
     
-    
-
 
     (setf (getprop rendering-function-set "error")
-	  (lambda (cell data stdout)
-	    (let ((div (getprop cell 'result-area)))
-	      (clear-result-area cell)
-	      (setf (chain div |innerHTML|) data)))) 
-    
+	  (lambda (result-area data stdout)
+	    (clear-result-area result-area)
+	    (setf (chain result-area |innerHTML|) data)))
 
+
+    ;; todo
+    ;; overflow scrolling failed,
+    ;; try it later.
+    (setf (getprop rendering-function-set "pack")
+	  ;; stdout is ignored
+	  (lambda (result-area data stdout)
+	    (clear-result-area result-area)
+	    (unless (= stdout "")
+	      (let ((p (chain document (create-element "p"))))
+		;; "pre-wrap" may not be inherited
+		;; check it out
+		(chain result-area (append-child p))
+		(setf (chain p |innerHTML|) stdout)))
+	    (loop for row in data do
+		 (let ((div-row (chain document (create-element "div"))))
+		   (chain result-area (append-child div-row))
+		   (if (instanceof row |Array|)
+		       (loop for c1 in row do
+			    (let ((div1 (chain document (create-element "div"))))
+			      (chain div-row (append-child div1))
+			      (setf (chain div1 style display) "inline-block")
+			      ;; stdout is ignored
+			      (render-result div1 c1 "")))
+		       (render-result div-row row ""))))))
     
+        
+
     ;; don't worry about cell focusing here
-    (defun render-result (cell evaled-value stdout)
+    ;; resul-area is a div elementp
+    (defun render-result (result-area evaled-value stdout)
       (let ((command (chain evaled-value command))
 	    (data (chain evaled-value data)))
-	((getprop rendering-function-set command) cell data stdout)))
+	((getprop rendering-function-set command) result-area data stdout)))
 
 
     

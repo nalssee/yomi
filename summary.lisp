@@ -1,0 +1,74 @@
+(in-package :yomi)
+
+(defclass code ()
+  ((codelist :initarg :codelist
+	     :reader codelist)))
+
+(defun code->string (code)
+  (if (and (listp code) (eql (first code) 'progn))
+      (format nil "~{~S~^~%~}" (rest code))
+      (format nil "~S" code)))
+
+(defun make-code (codelist)
+  (make-instance
+   'code
+   :codelist
+   (mapcar #'code->string
+	   (progn (let (result)
+		    (in-package :ynb)
+		    (setf result codelist)
+		    (in-package :yomi)
+		    result)))))
+
+(defun demo ()
+  (make-code
+   '(
+     (+ 3 4)
+     (format t "Standard~%    Output")
+     (intentional error)
+     
+     (plot (series (loop repeat 100 collect (list (random 10.0)
+						  (random 20.0)))))
+     (plot
+      (series '((1 2) (2 3) (5 2) (9 4))
+       :lines t
+       :symbol "cross"
+       :label "data 1"
+       :color "green")
+      (series (loop repeat 20 collect (list (random 10.0) (random 5.0)))
+       :label "data 2" :color "purple")
+      :title "Sample Chart" :width 600 :height 200
+      :xlabel "x axis" :ylabel "y axis" :xrange '(0 12)
+      :yrange '(0 6))
+
+     (progn
+       (defun throw-coins (n)
+	 (loop repeat n collect (random 2)))
+       (defun count-ones (xs)
+	 (length (remove-if-not #'(lambda (x) (= x 1)) xs)))
+       (let ((xs (loop repeat 3000 collect
+		      (count-ones (throw-coins 100)))))
+	 (plot (hist xs :label "n of front")
+	       :width 700 :height 300
+	       :title "Coin Throw"
+	       :xlabel "out of 100"
+	       :ylabel "out of 3000")))
+
+     
+     
+     
+     (progn
+       (defun samplot (width height)
+	 (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t)
+	       :width width :height height :title "FOO"))
+       (format  t "Packing Exmaple")
+       (pack (list (pack (samplot 300 100)
+			 (samplot 300 100))
+		   (samplot 180 233)
+		   (samplot 200 233))
+	     (samplot 674 100))))))
+
+
+
+
+

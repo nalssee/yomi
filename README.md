@@ -2,27 +2,28 @@
 Common Lisp version of iPython notebook
 
 ## Tested
-OS: MACOS X, Linux
+OS: MACOS X, Linux (tested in Ubuntu 14.04)
 
 CL implementation: SBCL, CCL (must support multi-threads)
 
 Web browsers: Recent versions of Google Chrome, Firefox and Safari, must support web socket
 
 
-## Parameters
-\*keymap\* : "emacs", "vim" or "sublime"
+## Quick start
+\(yomi:start-yomi\)
 
-\*max-eval-threads\* : maximum number of evaluation threads
+When the web browser opens a notebook page type in (demo) in the textarea for help
 
-\*working-directory\* : working-directory
 
 ## Keyboard Shortcut
 Ctrl-Return : Evaluate focused cell
 
 Ctrl-s : Save notebook
 
+## Some utils
+change directory : (cd "~/Desktop/notebooks")
 
-## Quick start
-\(yomi:start-yomi\)
+change keymap : (keymap "vim") or (keymap "sublime"), default is "emacs"
+
 
 

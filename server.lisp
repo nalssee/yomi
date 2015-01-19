@@ -16,6 +16,21 @@
 (defvar *message-handling-function-set*
   (make-hash-table :test #'equal))
 
+(defun cd (dir)
+  (let ((dir (fad:pathname-as-directory dir)))
+    (if (fad:directory-exists-p dir)
+	(setf *working-directory* dir)
+	(error "~A doesn't exist" dir))))
+
+(defun keymap (editor)
+  (let ((editor (string-downcase editor)))
+    (if (member editor (list "emacs" "vim" "sublime"))
+	(setf *keymap* editor)
+	(error "Keymap must of one of ~S, ~S, or ~S, given ~A"
+	       "emacs" "vim" "sublime" editor))))
+
+
+
 
 (defmacro handle-message ((client command data) &body body)
   `(setf (gethash ,command *message-handling-function-set*)
@@ -357,12 +372,36 @@
 				       :command "error"
 				       :data (first side-effect))
 			""))
-		 
 		 (t
 		  (list cell-no
 			;; 
 			(build-to-send-message evaled-value)
 			side-effect)))))))
+
+
+
+
+(defclass pack ()
+  ((rows :initarg :pack-rows
+	 :accessor pack-rows)))
+
+
+
+(defun pack (&rest rows)
+  (make-instance
+   'pack
+   :pack-rows
+   (packup rows)))
+
+
+(defun packup (rows)
+  (loop for row in rows collect
+       (let (result)
+	 (if (listp row)
+	     (loop for c1 in row do
+		  (push (build-to-send-message c1) result))
+	     (push (build-to-send-message row) result))
+	 (reverse result))))
 
 
 ;; <-- for future extension
@@ -381,6 +420,21 @@
   (make-instance 'message
 		 :command "code"
 		 :data (codelist evaled-value)))
+
+
+(defmethod build-to-send-message ((evaled-value pack))
+  (make-instance 'message
+		 :command "pack"
+		 :data (pack-rows evaled-value)))
+
+
+
+
+
+
+
+
+
 
 
 
@@ -403,7 +457,6 @@
     (setf result (eval (read-from-string (format nil "(progn ~A)" str))))
     (in-package :yomi)
     result))
-
 
 
 

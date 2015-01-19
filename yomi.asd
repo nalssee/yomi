@@ -19,9 +19,9 @@
   :components (
 	       (:file "packages")
 	       (:file "parameters")
+
 	       (:file "plot")
-	       (:file "demo")
-	       (:file "utils")
+	       (:file "summary")
 	       (:file "client")
 	       (:file "server")
 	       

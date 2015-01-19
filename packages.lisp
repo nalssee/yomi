@@ -5,13 +5,19 @@ Yomi package
   (:use :cl :parenscript :cl-who :hunchentoot :clws :cl-fad)
   (:export
    :start-yomi
-   :make-series
-   :make-chart
+   :series
+   :plot
+   :hist
    :*working-directory*
    :*max-eval-threads*
    :*keymap*
    :demo
+   :cd
+   :pack
+   :keymap
+   
    ))
+
 
 
 ;; package for yomi notebook
@@ -19,7 +25,12 @@ Yomi package
   (:use :cl)
   (:import-from
    :yomi
-   :make-chart
-   :make-series
+   :plot
+   :series
+   :hist
    :demo
+   :cd
+   :pack
+   :keymap
    ))
+
