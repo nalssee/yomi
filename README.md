@@ -1,15 +1,20 @@
 ## YOMI
 Common Lisp version of iPython notebook
 
+![Alt text](/images/ss1.png?raw=true "Screen Shot")
+
 ## Tested
 OS: MACOS X (Yosemite), Linux (Ubuntu 14.04)
 
-CL implementation: SBCL, CCL (must support multi-threads)
+CL: SBCL, CCL (must support threads)
 
-Web browsers: Recent versions of Google Chrome, Firefox and Safari, must support web socket
+Web browsers: Recent ones (must support web socket)
+
+## Dependencies
+cl-who, hunchentoot, clws, parenscript, cl-json, inferior-shell, cl-fad, bordeaux-threads, usocket
 
 
-## Install Quick start
+## Installation && Quick start
 cd ~/quicklisp/local-projects
 
 git clone https://github.com/nalssee/yomi.git
@@ -25,17 +30,15 @@ When a web browser opens a notebook page, type in (demo) in a textarea for help.
 
 
 ## Keyboard Shortcut
-Ctrl-Return : Evaluate focused cell
+Ctrl-Enter : Evaluate the focused cell
 
 Ctrl-s : Save notebook
 
 ## Utils
 change directory : (cd "~/Desktop/notebooks")
 
-change keymap : (keymap "vim") or (keymap "sublime"), default is "emacs"
+change keymap : (keymap "vim") or (keymap "sublime") , default: "emacs"
 
-
-![Alt text](/images/ss1.png?raw=true "Screen Shot")
 
 
 
