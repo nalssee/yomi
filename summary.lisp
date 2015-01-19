@@ -56,8 +56,8 @@
        :color "green")
       (series (loop repeat 20 collect (list (random 10.0) (random 5.0)))
        :label "data 2" :color "purple")
-      :title "Sample Chart" :width 600 :height 200
-      :xlabel "x axis" :ylabel "y axis" :xrange '(0 12)
+      :title "Sample Chart" :width 600 :height 200 :radius 5
+      :xlabel "x axis" :ylabel "y axis" :xrange '(0 12) 
       :yrange '(0 6))
 
      
@@ -78,8 +78,9 @@
      
      (progn
        (defun samplot (width height)
-	 (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t)
-	       :width width :height height :title "FOO"))
+	 (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t :symbol "cross")
+	       :width width :height height :title "FOO" :radius 5))
+       
        (format  t "Packing Exmaple")
        (pack (list (pack (samplot 300 100)
 			 (samplot 300 100))
