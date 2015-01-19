@@ -91,19 +91,18 @@
       (defpackage :foo
 	(:use :cl :yomi :alexandria))
       (set-package :foo)
-      (format t "You can use functions in alexandria package once this cell is evaluated"))
+      "You can use functions in alexandria package once this cell is evaluated")
      
      (flatten '((3) 4 ((5 (6)) 7)))
 
      (progn
-       (format t "Set it back to ynb")
+        "Set it back to ynb"
        (set-package :ynb))
 
      (progn
-       (format t "And flatten can't be used directly anymore")
-       (format t "~%So you will see an error message")       
-       (flatten '((3) 4)))
-     
+        "And flatten can't be used directly anymore"
+	"So you will see an error message"
+	(flatten '((3) 4)))
      
      )))
 
