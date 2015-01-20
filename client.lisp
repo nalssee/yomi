@@ -17,19 +17,25 @@
     ;; removed cell contents to recover
     ;; a list of cell position and editor value pairs
     (defvar removed-cell-contents (array))
+    
+    (defvar rename-span nil)
+    (defvar rename-save nil)
 
-   
+    ;; Show system messages here
+    
     (defvar cell-counter 0)
 
     ;; 0 : never been saved with the current file name
     ;; 1 : saved at least once
     (defvar ever-been-saved 0)
+
         
     (defun first (x) (getprop x 0))
     (defun rest (x) (chain x (slice 1)))
     (defun last1 (x)
       (getprop x (- (chain x length) 1)))
     
+
     (setf
      ;; string formatting
      ;; "<p>{0} {1}</p>".format("Hello", "Kenjin")
@@ -83,13 +89,14 @@
 	    (cell-no (cell-position cell)))
 	(when (not (and (last-cell-p cell)
 			(= cell-content "")))
+	  (notify "Processing" "orange")
 	  (ws.send
 	   (chain +JSON+ (stringify
 			  (make-message
 			   command
 			   (array
 			    (array cell-no cell-content)))))))))
-
+    
     
     (defun interrupt ()
       (ws.send
@@ -104,6 +111,7 @@
       (let* ((cells-to-eval (chain all-cells
 				   (slice (cell-position focused-cell))))
 	     (first-cell-position (cell-position focused-cell)))
+	(notify "Processing" "orange")
 	(ws.send
 	 (chain +JSON+ (stringify
 			(make-message
@@ -111,7 +119,7 @@
 			 (loop for c in cells-to-eval
 			    for i from first-cell-position collect
 			      (array i (chain (getprop c 'editor) (get-value))))))))))
-
+    
     
     (defun last-cell ()
       (let* ((n (chain all-cells length)))
@@ -247,41 +255,77 @@
 
     ;; 
     (defun rename-input-show-up ()
-      (let ((span (chain document (get-element-by-id "rename_span")))
-	    (input (chain document (get-element-by-id "rename_input"))))
+      (let ((rename-input (chain document (get-element-by-id "rename_input"))))
 	;; hide the file name span
-	(setf (chain span style display)  "none")
+	(setf (chain rename-span style display)  "none")
 	;; show input and button
-	(setf (chain input style display) "inline")))
+	(setf (chain rename-input style display) "inline")))
 
 
+    
+    ;; blink rename_span content for a second 
+    (defun notify-blink (message color-string)
+      ;; Maybe I shoud set a variable for rename span
+      (let ((saved-span-content (chain rename-save |innerHTML|)))
+	(unless (= (chain rename-span |innerHTML|) "Processing")
+	  (setf (chain rename-span |innerHTML|) message)
+	  (setf (chain rename-span style color) color-string)
+	  (set-timeout (lambda ()
+			 ;; revert it back
+			 (setf (chain rename-span |innerHTML|) saved-span-content)
+			 ;; gray is the default color
+			 (setf (chain rename-span style color) "gray"))
+		       1000)
 
-    ;; blink rename_span content for a second.
-    (defun blink-rename_span (message)
-      (let* ((saved-span-content (chain
-				  document (get-element-by-id "rename_save")
-				  |innerHTML|))
-	     (span (chain document (get-element-by-id "rename_span"))))
-	(setf (chain span |innerHTML|) message)
+	  )
+	
+	))
+
+    (defun notify-blink-enforce (message color-string)
+      ;; Maybe I shoud set a variable for rename span
+      (let ((saved-span-content (chain rename-save |innerHTML|)))
+	(setf (chain rename-span |innerHTML|) message)
+	(setf (chain rename-span style color) color-string)
 	(set-timeout (lambda ()
 		       ;; revert it back
-		       (setf (chain span |innerHTML|) saved-span-content))
+		       (setf (chain rename-span |innerHTML|) saved-span-content)
+		       ;; gray is the default color
+		       (setf (chain rename-span style color) "gray"))
 		     1000)))
+
+
+
+    
+
+    (defun notify (message color-string)
+      (setf (chain rename-span |innerHTML|) message)
+      (setf (chain rename-span style color) color-string))
+
+
+    (defun notify-revert ()
+      (setf (chain rename-span |innerHTML|)
+	    (chain rename-save |innerHTML|))
+      (setf (chain rename-span style color) "GRAY"))
+
+    
+
+    
+    
+
+        
     
     (defun rename-notebook ()
-      (let ((span (chain document (get-element-by-id "rename_span")))
-	    (input  (chain document (get-element-by-id "rename_input")))
-	    (saved-span (chain document (get-element-by-id "rename_save"))))
-	(unless (= (chain saved-span |innerHTML|)
-		   (chain input value))
+      (let ((rename-input  (chain document (get-element-by-id "rename_input"))))
+	(unless (= (chain rename-save |innerHTML|)
+		   (chain rename-input value))
 	  (setf ever-been-saved 0))
-	(setf (chain span |innerHTML|)
-	      (chain input value))
-	(setf (chain span style display)  "inline")
-	(setf (chain input style display) "none")
+	(setf (chain rename-span |innerHTML|)
+	      (chain rename-input value))
+	(setf (chain rename-span style display)  "inline")
+	(setf (chain rename-input style display) "none")
 
-	(setf (chain saved-span |innerHTML|)
-	      (chain span |innerHTML|))))
+	(setf (chain rename-save |innerHTML|)
+	      (chain rename-span |innerHTML|))))
     
 
     
@@ -300,9 +344,7 @@
         
     (defun save-notebook ()
       (unless (empty-notebook-p)
-	(let ((filename
-	       (chain document (get-element-by-id "rename_span")
-		      |innerHTML|)))
+	(let ((filename (chain rename-save |innerHTML|)))
 	  (ws.send 
 	   (chain +JSON+
 		  (stringify
@@ -331,7 +373,7 @@
 	;; But I will just leave it be for this experiental phase.
 	
 	;; style
-;; 	(setf (chain resultarea style overflow) "auto")
+	;; 	(setf (chain resultarea style overflow) "auto")
 	
 	(setf (chain div-main style border-style) "solid")
 	(setf (chain div-main style border-radius) "0.5em")
@@ -421,10 +463,10 @@
 	))
 
    
-     (defun draw-chart (place data options)
-       (chain ($ document)
-	      (ready (lambda ()
-		       (chain $ (plot place data options))))))
+    (defun draw-chart (place data options)
+      (chain ($ document)
+	     (ready (lambda ()
+		      (chain $ (plot place data options))))))
     
     (defun cutout-extension (filename)
       (let ((splited  (chain filename (split "."))))
@@ -443,10 +485,8 @@
 			 "loadFile"
 			 notebook-filename))))
 	(let ((filename (cutout-extension notebook-filename)))
-	  (setf (chain document (get-element-by-id "rename_span")  |innerHTML|)
-		filename)
-	  (setf (chain document (get-element-by-id "rename_save")  |innerHTML|)
-		filename)
+	  (setf (chain rename-span |innerHTML|) filename)
+	  (setf (chain rename-save |innerHTML|) filename)
 	  (setf (chain document (get-element-by-id "rename_input") value)
 		filename))))
 
@@ -465,62 +505,78 @@
     
     (setf (getprop message-handling-function-set "evaled")
 	  (lambda (data)
+	    (notify-revert)
 	    (let ((first-eval-cell-position (first (first data)))
 		  (last-eval-cell-position  (first (last1 data))))
 	      (loop for (nil evaled-value stdout) in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
 		   (render-result (getprop cell 'result-area) evaled-value stdout))
 	      (focus-to-next-cell (getprop all-cells last-eval-cell-position))
-	      (auto-scroll))))
+	      (auto-scroll))
+	    
+
+
+	    ))
 
     (setf (getprop message-handling-function-set "evaledk")
 	  (lambda (data)
+	    (notify-revert)
 	    (let ((first-eval-cell-position (first (first data)))
 		  (last-eval-cell-position  (first (last1 data))))
 	      (loop for (nil evaled-value stdout) in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
 		   (render-result (getprop cell 'result-area) evaled-value stdout))
 	      ;; focus-to-next-cell is not invoked here
-	      )))    
+
+	      
+	      )))
+    
     (setf (getprop message-handling-function-set "code")
 	  ;; set values to cells
 	  (lambda (data)
 	    (chain (getprop (first-cell) 'editor) (get-doc) (set-value (getprop data 0)))
+	    
 	    (loop for exp in (chain data (slice 1)) do
 		 (chain (getprop (make-cell) 'editor)
 			(get-doc) (set-value exp)))
-	    (get-it-focused (first-cell))
+	    
+	    ;; <- todo
 	    (eval-forward)
-	    (change-title)))
+	    (get-it-focused (first-cell))
+	    (change-title)
+	    ))
 
+
+    
     (setf (getprop message-handling-function-set "systemError")
 	  ;; set values to cells
 	  (lambda (data)
-	    (blink-rename_span "SYSTEM ERROR")
+	    (notify-blink "SYSTEM ERROR" "RED")
 	    (let ((fc (first-cell)))
 	      (clear-result-area fc)
 	      (setf (chain (getprop fc 'result-area)
 			   |innerHTML|) data)
 	      (get-it-focused fc))))
 
+    
+
     (setf (getprop message-handling-function-set "systemMessage")
 	  ;; set values to cells
 	  (lambda (data)
 	    (cond ((= data "saved")
 		   (setf ever-been-saved 1)
-		   (blink-rename_span "Saved Successfully!!")
+		   (notify-blink "Saved Successfully!!" "GREEN")
 		   (change-title))
 		  ((= data "interrupted")
-		   (blink-rename_span "Interrupted!!")))))
+		   (notify-blink-enforce "Interrupted!!" "dodgerblue")))))
 
 
-    
-    
     
     (defun handle-message (msg)
       (let* ((json-msg (chain +JSON+ (parse msg)))
 	     (command (chain json-msg command))
 	     (data (chain json-msg data)))
+
 	((getprop message-handling-function-set command) data)))
 
     
@@ -578,14 +634,25 @@
     
     
     (setf (getprop rendering-function-set "code")
+	  ;; stdout is ignored
 	  (lambda (result-area data stdout)
-	    (let ((first-cell focused-cell))
-	      (loop for d1 in data do
-		   (let* ((c1 (make-cell focused-cell)))
-		     (chain (getprop c1 'editor) (get-doc) (set-value d1))))
-	      (focus-to-next-cell first-cell)
-	      ;; <- might not be perfect but I'll just leave it be
-	      (eval-forward))))
+	    ;; 
+	    (if (last-cell-p focused-cell)
+		(let ((first-cell focused-cell))
+		  (loop for d1 in data do
+		       (let* ((c1 (make-cell focused-cell)))
+			 (chain (getprop c1 'editor) (get-doc) (set-value d1))))
+
+		  ;; <- todo
+		  ;; not perfect
+		  (focus-to-next-cell first-cell)
+		  (eval-forward)
+
+		  )
+		
+		(progn
+		  (setf (chain result-area |innerHTML|)
+			"Unless this is the last cell and also focused, it is ignored.")))))
     
 
     (setf (getprop rendering-function-set "error")
@@ -595,7 +662,7 @@
 
 
     ;; todo
-    ;; overflow scrolling failed,
+    ;; Horizontal overflow scrolling failed,
     ;; try it later.
     (setf (getprop rendering-function-set "pack")
 	  ;; stdout is ignored
@@ -619,8 +686,9 @@
 			      (render-result div1 c1 "")))
 		       (render-result div-row row ""))))))
     
-        
 
+    
+    
     ;; don't worry about cell focusing here
     ;; resul-area is a div elementp
     (defun render-result (result-area evaled-value stdout)
@@ -664,7 +732,21 @@
 
     (setf (chain ws onmessage)
 	  (lambda (event)
-	    (handle-message (chain event data)))))
+	    (handle-message (chain event data))))
+    
+
+
+    (setf (chain window onload)
+	  (lambda (event)
+	    ;; these elements are used often
+	    (setf rename-span (chain document (get-element-by-id "rename_span")))
+	    (setf rename-save (chain document (get-element-by-id "rename_save")))
+	    
+
+	    )))
+
+  
+  
   )
 
 

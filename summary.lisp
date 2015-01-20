@@ -4,10 +4,28 @@
   ((codelist :initarg :codelist
 	     :reader codelist)))
 
+
 (defun code->string (code)
   (if (and (listp code) (eql (first code) 'progn))
-      (format nil "~{~S~^~%~}" (rest code))
-      (format nil "~S" code)))
+      (format nil "~{~S~^~%~}" (peel-package-name (rest code)))
+      (format nil "~S" (peel-package-name code))))
+
+
+;; todo 
+;; a bit dangerous and heavy 
+(defun peel-package-name (code)
+  "Showing a package name for each symbol looks ugly
+   So, strip it off"
+  (cond ((atom code)
+	 (if (and (symbolp code) (string= *default-working-package*
+					  (package-name (symbol-package code))))
+	     (intern (symbol-name code))
+	     code))
+	(t (cons (peel-package-name (first code))
+		 (peel-package-name (rest code))))))
+
+
+
 
 (defun make-code (codelist)
   (make-instance
@@ -29,11 +47,15 @@
 
 
 
+;;
+;; <- todo
+;; Think further
 (defmacro defcode (name args &body body)
   `(defun ,name ,args
      (make-code
       (sublis (mapcar #'cons ',args (list ,@args))
 	      ',body))))
+
 
 
 
@@ -54,6 +76,7 @@
   		       (list i (cos i))) :lines t :points nil :color "red"
   		       :label "cos(x)")
   	  :xlabel "Radian"))
+
 
      
   (plot
@@ -113,18 +136,14 @@
     "So you will see an error message"
     (flatten '((3) 4)))
 
-  
-  (progn
-    (format t "~%Type in (defcode-example 1 2) for example")
-    (defcode defcode-example (x y)
-      (+ x y)
-      (progn
-	(format t "~%Got it?")
-	(format t "~%demo function itself is written this way.")
-	(format t "~%Now you can define interactive simulation code.")
-	)))
+  ;; (defcode defcode-example (x)
+  ;;   "defcode for interactive simulation, demo function itsef is written this way"
+  ;;   (progn
+  ;;     (format t "sample plot")
+  ;;     (plot (series 'x))))
 
-  
+  ;; (defcode-example '((1 2) (3 4) (5 6) (7 8)))
+
   
   )
 

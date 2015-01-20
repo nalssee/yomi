@@ -80,6 +80,10 @@
 ;; 3. command: systemError (file IO/threads realated errors)
 ;;    data: a string
 
+;; 4. command: pack (multiple results)
+;;    data: a list of evaled values (recursive)
+
+
 
 (handle-message (client "eval" data)
   (loop
@@ -102,6 +106,8 @@
 				     (bt:condition-notify *global-cv*)))))))
 		    (return))
 	     (bt:condition-wait *global-cv* *global-lock*))))))
+
+
 
 
 ;; It may look code duplication, but
@@ -167,17 +173,22 @@
      (json:decode-json s))))
 
 
+
 (handle-message (client "interrupt" data)
-  (declare (ignore data))
+  (declare (ignore data client))
   (loop for thread across *eval-threads-pool*
      for i from 0 do
        (when (and (bt:threadp thread)
 		  (bt:thread-alive-p thread))
 	 (bt:destroy-thread thread))
      ;; nullify
-       (setf (aref *eval-threads-pool* i) nil)
-       (send-message client "systemMessage" "interrupted")))
-
+       (setf (aref *eval-threads-pool* i) nil))
+  
+  ;; interrupt message must be sent to all clients
+  (loop for c1 in *notebook-clients* do
+       (send-message
+	c1
+	"systemMessage" "interrupted")))
 
 
 
@@ -376,8 +387,9 @@
 			""))
 		 (t
 		  (list cell-no
-			;; 
+			;;
 			(build-to-send-message evaled-value)
+			
 			side-effect)))))))
 
 
@@ -428,8 +440,6 @@
   (make-instance 'message
 		 :command "pack"
 		 :data (pack-rows evaled-value)))
-
-
 
 
 
