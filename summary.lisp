@@ -120,7 +120,9 @@
       (+ x y)
       (progn
 	(format t "~%Got it?")
-	(format t "~%Now you can define interactive simulation code."))))
+	(format t "~%demo function itself is written this way.")
+	(format t "~%Now you can define interactive simulation code.")
+	)))
 
   
   
