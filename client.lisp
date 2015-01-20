@@ -539,11 +539,12 @@
 	    (loop for exp in (chain data (slice 1)) do
 		 (chain (getprop (make-cell) 'editor)
 			(get-doc) (set-value exp)))
-	    
+	    	    
 	    ;; <- todo
-	    (eval-forward)
 	    (get-it-focused (first-cell))
+	    (eval-forward)
 	    (change-title)
+	    
 	    ))
 
 
