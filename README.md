@@ -1,5 +1,5 @@
 ## YOMI
-Common Lisp version of iPython notebook
+- Common Lisp version of iPython notebook
 ![Alt text](/images/ss1.png?raw=true "Screen Shot")
 
 ## Tested
@@ -7,7 +7,7 @@ Common Lisp version of iPython notebook
 - CL: SBCL, CCL (must support threads)
 - Web browsers: Recent ones (must support web socket)
 
-## Dependencies (direct ones)
+## (Direct) Dependencies 
 - cl-who, hunchentoot, clws, parenscript, cl-json, inferior-shell, cl-fad, bordeaux-threads, usocket
 
 
@@ -30,7 +30,4 @@ After starting sbcl/ccl
 - change directory : (cd "~/where/notebooks/are") default: \*default-pathname-defaults\*
 - list directory : (ls) or (ls "~/dir/to/show")
 - change keymap : (keymap "vim") or (keymap "sublime") , default: "emacs"
-
-
-
 
