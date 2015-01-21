@@ -165,28 +165,34 @@
 
    
     (defun turn-on-border (cell)
-      (let ((divmain (getprop cell 'div-main)))
-	(setf (chain divmain style border-color) "green")))
+      (let ((divmain (getprop cell 'div-main))
+	    (cla (getprop cell 'cell-loc-area)))
+	(setf (chain divmain style border-color) "green")
+	(setf (chain cla style color) "green")))
+    
    
     (defun turn-off-border (cell)
       (when cell
-	(let* ((divmain (getprop cell 'div-main)))
-	  (setf (chain divmain style border-color) "#FFFFFF"))))
+	(let ((divmain (getprop cell 'div-main))
+	      (cla (getprop cell 'cell-loc-area)))
+	  (setf (chain divmain style border-color) "#FFFFFF")
+	  (setf (chain cla style color) "gray")
+
+	  )))
    
    
     ;; when the cell (actually div-outer) is clicked
     (defun get-it-focused (cell)
       (turn-off-border focused-cell)
       (setf focused-cell cell)
-      (turn-on-border cell)
-      )
+      (turn-on-border cell))
 
+    
 
     ;; add a cell after the focused cell
     (defun add-cell ()
-      (make-cell focused-cell)
-      )
-
+      (make-cell focused-cell))
+    
       
     ;; remove a focused-cell and focus goes up
     ;; if there's only one cell do nothing
@@ -205,7 +211,10 @@
 	   (getprop all-cells
 		    (if (= n 0)
 			0
-			(- n 1))))))
+			(- n 1))))
+	  
+	  (refresh-cell-loc)
+	  ))
       
       )
 
@@ -222,7 +231,11 @@
 		(chain (getprop cell 'editor) (get-doc) (set-value content)))
 	      (let ((cell (make-cell (getprop all-cells n))))
 		(chain (getprop cell 'editor) (get-doc) (set-value content))
-		(move-up))))))
+		(move-up)))
+	  
+	  (refresh-cell-loc)
+
+	  )))
     
 
 
@@ -239,6 +252,7 @@
 	  (setf (getprop all-cells (1- n)) focused-cell)
 	  (setf (getprop all-cells n) temp)
 	  (auto-scroll)
+	  (refresh-cell-loc)
 	  )))
     
     
@@ -250,7 +264,10 @@
 		    (getprop focused-cell 'div-outer))
 	  (setf (getprop all-cells (1+ n)) focused-cell)
 	  (setf (getprop all-cells n) temp)
-	  (auto-scroll))))
+	  (auto-scroll)
+	  (refresh-cell-loc)
+
+	  )))
     
 
     ;; 
@@ -308,8 +325,6 @@
       (setf (chain rename-span style color) "GRAY"))
 
     
-
-    
     
 
         
@@ -364,8 +379,22 @@
 			    (loop for cell in all-cells collect
 				 (chain (getprop cell 'editor) (get-value)))))))))))
 
+
+    (defun pad (str max)
+      (if (< (chain str length) max)
+	  (pad (+ "0" str) max)
+	  str))
     
-    
+    ;; not a very efficient way but
+    ;; I don't want to bother.
+    ;; computers are fast enough
+    (defun refresh-cell-loc ()
+      (loop for i from 1
+	   for cell in all-cells do
+	   (setf (chain (getprop cell 'cell-loc-area) |innerHTML|)
+		 (pad (chain i (to-string)) 3))))
+
+        
 
     ;; cell is an object with a div element and an editor in the element
     ;; if a sibling is given, make a cell after sibling
@@ -374,14 +403,17 @@
       (let ((div-outer (chain document (create-element "div")))
 	    (div-main (chain document (create-element "div") ))
 	    (textarea (chain document (create-element "textarea")))
-	    (resultarea (chain (chain document (create-element "div")))))
+	    (resultarea (chain document (create-element "div")))
+	    ;; cell location
+	    (cell-loc-area (chain document (create-element "div")))
+
+	    )
 
 	;; I think the following some lines must go to css file
 	;; But I will just leave it be for this experiental phase.
 	
 	;; style
 	;; 	(setf (chain resultarea style overflow) "auto")
-	
 	(setf (chain div-main style border-style) "solid")
 	(setf (chain div-main style border-radius) "0.5em")
 	;; invisible border
@@ -392,18 +424,27 @@
 
 	(setf (chain div-main style padding) "10px 10px 10px 10px")
 	(setf (chain div-main style margin) "0 auto")
-	(setf (chain div-main style width) "95%")	
+	(setf (chain div-main style width) "90%")
+	(setf (chain div-main style display) "inline-block")
 
+	(setf (chain cell-loc-area |innerHTML|) "000")
+	(setf (chain cell-loc-area style color) "gray" )
+	(setf (chain cell-loc-area style display) "inline-block" )
+	(setf (chain cell-loc-area style padding) "10px" )
 	
 	;; resultarea style
 	(setf (chain resultarea style white-space) "pre-wrap")
-	(setf (chain resultarea style margin-left) "50px")	
+	(setf (chain resultarea style margin-left) "50px")
 	
 	;; append elements
 	(chain div-main (append-child textarea))
 	(chain div-main (append-child resultarea))
-	;; insert div-main into div-outer
+
+	
+	(chain div-outer (append-child cell-loc-area))
+	;; insert div-main into div-outer		
 	(chain div-outer (append-child div-main))
+
 	
 	;; You must first attach a div element to a document before it wears CodeMirror.
 	(if (= sibling undefined)
@@ -444,7 +485,8 @@
 			    div-outer div-outer
 			    div-main div-main
 			    result-area resultarea
-			    editor editor)))
+			    editor editor
+			    cell-loc-area cell-loc-area)))
 	  
 	  ;; increase cell-counter by 1
 	  (incf cell-counter)
@@ -457,6 +499,8 @@
 	  (if (= sibling undefined)
 	      (chain all-cells (push cell))
 	      (chain all-cells (splice (1+ (cell-position sibling)) 0 cell)))
+
+	  (refresh-cell-loc)
 	  
 
 	  ;; add event to div-outer
