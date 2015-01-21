@@ -22,6 +22,7 @@
 	(setf *working-directory* dir)
 	(error "~A doesn't exist" dir))))
 
+
 (defun keymap (editor)
   (let ((editor (string-downcase editor)))
     (if (member editor (list "emacs" "vim" "sublime") :test #'equal)
@@ -30,8 +31,13 @@
 	(error "Keymap must of one of ~S, ~S, or ~S, given ~A"
 	       "emacs" "vim" "sublime" editor))))
 
+
 (defun set-package (package)
-  (setf *default-working-package* (string-upcase (string package))))
+  (let ((package (string-upcase (string package))))
+    (if (find-package package)
+	(setf *default-working-package* package)
+	(error "Package ~A does not exist" package))))
+
 
 
 (defmacro handle-message ((client command data) &body body)
