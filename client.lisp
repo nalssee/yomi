@@ -315,17 +315,24 @@
         
     
     (defun rename-notebook ()
-      (let ((rename-input  (chain document (get-element-by-id "rename_input"))))
+      (let* ((rename-input  (chain document (get-element-by-id "rename_input")))
+	     ;; trimmed rename-input value
+	     (rename-input-value (chain rename-input value (trim))))
+
 	(unless (= (chain rename-save |innerHTML|)
-		   (chain rename-input value))
-	  (setf ever-been-saved 0))
-	(setf (chain rename-span |innerHTML|)
-	      (chain rename-input value))
+		   rename-input-value)
+	  
+	  (setf ever-been-saved 0)
+	  (setf (chain rename-span |innerHTML|) rename-input-value)
+	  (setf (chain rename-save |innerHTML|)
+		(chain rename-span |innerHTML|)))
+	
 	(setf (chain rename-span style display)  "inline")
 	(setf (chain rename-input style display) "none")
 
-	(setf (chain rename-save |innerHTML|)
-	      (chain rename-span |innerHTML|))))
+	
+
+	))
     
 
     
@@ -740,9 +747,15 @@
     (setf (chain window onload)
 	  (lambda (event)
 	    ;; these elements are used often
+
 	    (setf rename-span (chain document (get-element-by-id "rename_span")))
+	    ;; rename span value includes spaces so must be trimmed first
+	    ;; no idea why
+	    (setf (chain rename-span |innerHTML|)
+		  (chain rename-span |innerHTML| (trim)))
 	    (setf rename-save (chain document (get-element-by-id "rename_save")))
-	    
+	    (setf (chain rename-save |innerHTML|)
+		  (chain rename-save |innerHTML| (trim)))
 
 	    )))
 
