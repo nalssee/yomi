@@ -23,6 +23,14 @@
 	(error "~A doesn't exist" dir))))
 
 
+(defun ls (&optional (dir *working-directory*))
+  (format
+   nil
+   "~{~S~^~%~}"
+   (fad:list-directory dir)))
+
+
+
 (defun keymap (editor)
   (let ((editor (string-downcase editor)))
     (if (member editor (list "emacs" "vim" "sublime") :test #'equal)
@@ -203,7 +211,7 @@
 (defun start-yomi (&key
 		     (working-directory
 		      (fad:pathname-as-directory
-		       *working-directory*))
+		       *default-pathname-defaults*))
 		     (max-eval-threads *max-eval-threads*))
   
   ;; server preparation

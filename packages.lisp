@@ -9,7 +9,10 @@
    :plot
    :hist
    :demo
+   
    :cd
+   :ls
+   
    :pack
    :keymap
    :set-package

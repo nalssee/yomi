@@ -35,7 +35,7 @@ Ctrl-Enter : Evaluate the focused cell
 Ctrl-s : Save notebook
 
 ## Utils
-change directory : (cd "~/Desktop/notebooks")
+change directory : (cd "~/Desktop/notebooks") default: *default-pathname-defaults*
 
 change keymap : (keymap "vim") or (keymap "sublime") , default: "emacs"
 
