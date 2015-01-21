@@ -486,6 +486,7 @@
 			    div-main div-main
 			    result-area resultarea
 			    editor editor
+
 			    cell-loc-area cell-loc-area)))
 	  
 	  ;; increase cell-counter by 1

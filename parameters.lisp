@@ -48,8 +48,8 @@
     "CodeMirror/lib/codemirror.css"
     "CodeMirror/keymap/emacs.js"
     "CodeMirror/keymap/vim.js"
-    "CodeMirror/keymap/sublime.js"    
-    
+    "CodeMirror/keymap/sublime.js"
+    "CodeMirror/keymap/sublime.js"
     
     "CodeMirror/mode/commonlisp/commonlisp.js"
     "CodeMirror/addon/edit/matchbrackets.js"
