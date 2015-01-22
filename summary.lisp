@@ -96,10 +96,8 @@
   (progn
     (defun throw-coins (n)
       (loop repeat n collect (random 2)))
-    (defun count-ones (xs)
-      (length (remove-if-not #'(lambda (x) (= x 1)) xs)))
     (let ((xs (loop repeat 3000 collect
-  		   (count-ones (throw-coins 100)))))
+  		   (count 1 (throw-coins 100)))))
       (plot (hist xs :label "n of front")
   	    :width 700 :height 300
   	    :title "Coin Throw"
