@@ -12,7 +12,7 @@
 
 
 ;; todo 
-;; a bit dangerous and heavy 
+;; a bit heavy 
 (defun peel-package-name (code)
   "Showing a package name for each symbol looks ugly
    So, strip it off"
@@ -23,8 +23,6 @@
 	     code))
 	(t (cons (peel-package-name (first code))
 		 (peel-package-name (rest code))))))
-
-
 
 
 (defun make-code (codelist)
@@ -58,7 +56,6 @@
 
 
 
-
 (defcode demo ()
   (+ 3 4)
   (format t "Standard~%    Output")
@@ -77,7 +74,6 @@
   		       :label "cos(x)")
   	  :xlabel "Radian"))
 
-
      
   (plot
    (series '((1 2) (2 3) (5 2) (9 4))
@@ -91,7 +87,6 @@
    :xlabel "x axis" :ylabel "y axis" :xrange '(0 12) 
    :yrange '(0 6))
 
-     
 
   (progn
     (defun throw-coins (n)
@@ -111,11 +106,14 @@
   	    :width width :height height :title "FOO" :radius 5))
        
     (format  t "Packing Exmaple")
-    (pack (list (pack (samplot 300 100)
-  		      (samplot 300 100))
-  		(samplot 180 233)
-  		(samplot 200 233))
-  	  (samplot 674 100)))
+    (packv (packh (packv (samplot 300 100)
+			 (samplot 300 100))
+		  (samplot 180 233)
+		  (samplot 200 233))
+	   (samplot 674 100))
+    )
+  
+  
   (progn
     (ql:quickload "alexandria")
     (defpackage :foo
@@ -144,12 +142,6 @@
 
   
   )
-
-
-
-
-
-
 
 
 

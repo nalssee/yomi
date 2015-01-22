@@ -1,7 +1,5 @@
 (in-package :yomi)
 
-;; About Chart
-
 (defclass chart ()
   ((title :initarg :title :initform "Chart")
    (width :initarg :width :initform 400)
@@ -45,9 +43,6 @@
    ;; show points always
    (show :initarg :show :initform t)
    (fill-color :initarg :fill-color :initform "red" :accessor points-fill-color)))
-
-
-
 
 
 

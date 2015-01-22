@@ -13,7 +13,9 @@
    :cd
    :ls
    
-   :pack
+   :packv
+   :packh
+   
    :keymap
    :set-package
    :defcode
