@@ -1,6 +1,6 @@
 ## YOMI
 - Common Lisp version of iPython notebook
-![Alt text](/images/ss1.png?raw=true "Screen Shot")
+![Alt text](/images/ss.png?raw=true "Screen Shot")
 
 ## Tested
 - OS: MACOS X (Yosemite), Linux (Ubuntu 14.04)
