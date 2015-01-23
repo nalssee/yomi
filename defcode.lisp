@@ -61,8 +61,7 @@
   (format t "Standard~%    Output")
   (intentional error)
      
-  (plot (series (loop repeat 100 collect (list (random 10.0)
-  					       (random 20.0)))))
+  (plot (series '((-2 2) (3 4) (5 -2) (8 0))))
   ;; 
   (progn
     (format t "sin(x) and cos(x) from 0 to 2*pi")
@@ -74,19 +73,14 @@
   		       :label "cos(x)")
   	  :xlabel "Radian"))
 
-     
-  (plot
-   (series '((1 2) (2 3) (5 2) (9 4))
-  	   :lines t
-
-  	   :label "data 1"
-  	   :color "green")
-   (series (loop repeat 20 collect (list (random 10.0) (random 5.0)))
-  	   :label "data 2" :color "purple")
-   :title "Sample Chart" :width 600 :height 200 :radius 5
-   :xlabel "x axis" :ylabel "y axis" :xrange '(0 12) 
-   :yrange '(0 6))
-
+  (PLOT (SERIES
+	 (LOOP REPEAT 30
+	    COLLECT (LET ((X (RANDOM 10.0)))
+		      (LIST X (- (+ (* X 0.5) (RANDOM 2.0)) 1))))
+	 :LABEL "Random Nums" :COLOR "purple" :POINTS (CREATE :SHOW T :RADIUS 5))
+	(SERIES '((0 0) (10 5)) :LINES T :LABEL "Pseudo L-Sq fit" :COLOR "green")
+	:TITLE "Pseudo Least Squares Fit" :WIDTH 600 :HEIGHT 200 :XLABEL "X val" :YLABEL
+	"Y val" :XRANGE '(0 11) :YRANGE '(0 5.5))
 
   (progn
     (defun throw-coins (n)
@@ -98,7 +92,6 @@
   	    :title "Coin Throw"
   	    :xlabel "out of 100"
   	    :ylabel "out of 3000")))
-
   
      
   (progn
@@ -113,7 +106,6 @@
 		  (samplot 180 233 6 "triangle")
 		  (samplot 200 233 10 "square"))
 	   (samplot 674 100 1)))
-
 
   
   (progn
