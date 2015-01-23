@@ -98,7 +98,8 @@
   	    :title "Coin Throw"
   	    :xlabel "out of 100"
   	    :ylabel "out of 3000")))
-     
+
+  
      
   (progn
     (defun samplot (width height radius &optional (point-shape "circle"))
@@ -111,11 +112,19 @@
 			 (samplot 300 100 8 "diamond"))
 		  (samplot 180 233 6 "triangle")
 		  (samplot 200 233 10 "square"))
-	   (samplot 674 100 1))
-    )
+	   (samplot 674 100 1)))
 
 
   
+  (progn
+    (defun p1 (x)
+      (plot (series (loop for i from 1 to 100 by (* x pi)
+		       collect (list (sin i) (cos i)))
+		    :lines t)
+	    :width 150 :height 150 :yrange '(-1 1)
+	    :xrange '(-1 1)))
+    (packv (packh (p1 0.2) (p1 0.3) (p1 0.6))
+	   (packh (p1 0.7) (p1 0.8) (p1 1.1))))
   
   
   (progn
