@@ -9,7 +9,9 @@
    :plot
    :hist
    :demo
-   
+
+   :create
+
    :cd
    :ls
    

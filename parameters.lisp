@@ -35,8 +35,6 @@
 (defparameter *default-working-package* "YNB")
 
 
-
-
 ;; 
 (defparameter *js-css-files*
   '("flot/jquery.js"
@@ -53,6 +51,7 @@
     
     "CodeMirror/mode/commonlisp/commonlisp.js"
     "CodeMirror/addon/edit/matchbrackets.js"
+    
     "basic_style.css"
 
     ))
@@ -73,9 +72,7 @@
     ))
 
 
-
-;; I love colors
-;; Scraped from 
+;; Scraped from
 ;; http://www.w3schools.com/html/html_colornames.asp
 (defparameter *color-list*
   '("AliceBlue"
@@ -217,5 +214,4 @@
     "White"
     "WhiteSmoke"
     "Yellow"
-    "YellowGreen"
-    ))
+    "YellowGreen"))

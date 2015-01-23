@@ -78,7 +78,7 @@
   (plot
    (series '((1 2) (2 3) (5 2) (9 4))
   	   :lines t
-  	   :symbol "cross"
+
   	   :label "data 1"
   	   :color "green")
    (series (loop repeat 20 collect (list (random 10.0) (random 5.0)))
@@ -101,17 +101,21 @@
      
      
   (progn
-    (defun samplot (width height)
-      (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t :symbol "cross")
-  	    :width width :height height :title "FOO" :radius 5))
+    (defun samplot (width height radius &optional (point-shape "circle"))
+      (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t
+		    :points (create :show t :radius radius :symbol point-shape))
+  	    :width width :height height :title point-shape))
        
     (format  t "Packing Exmaple")
-    (packv (packh (packv (samplot 300 100)
-			 (samplot 300 100))
-		  (samplot 180 233)
-		  (samplot 200 233))
-	   (samplot 674 100))
+    (packv (packh (packv (samplot 300 100 8 "cross")
+			 (samplot 300 100 8 "diamond"))
+		  (samplot 180 233 6 "triangle")
+		  (samplot 200 233 10 "square"))
+	   (samplot 674 100 1))
     )
+
+
+  
   
   
   (progn

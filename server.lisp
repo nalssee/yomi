@@ -336,6 +336,25 @@
 		 :value (packup (pack-elts result))
 		 :stdout stdout))
 
+
+(defclass google-chart ()
+  ((title :initarg :title)
+   (h-axis :initarg :h-axis)
+   (v-axis :initarg :v-axis)
+   (legend :initarg :legend)))
+
+
+(defun google-chart ()
+  (make-instance
+   'google-chart
+   :title "Age vs. Weight comparison"
+   :haxis '((title . "Age") (min-value . 0)
+	    ())
+		 )
+  
+
+  )
+
 ;; all the rest
 (defmethod make-evaled-result ((result t) stdout cell-no)
   (make-instance 'evaled-result

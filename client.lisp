@@ -408,6 +408,8 @@
 		  (setf (chain title-element align) "center")
 		  (setf (chain title-element |innerHTML|) (@ value title)))))))
 
+    
+
     ;; code rendering is different from notebook file loading
     ;; You can type in message in text area and the server sends a message
     ;; to generate new cells
@@ -693,10 +695,13 @@
     ;; Helpers
     ;; ====================================================
 
+    ;; (defun draw-chart (place data options)
+    ;;   (chain ($ document)
+    ;; 	     (ready (lambda ()
+    ;; 		      (chain $ (plot place data options))))))
+    
     (defun draw-chart (place data options)
-      (chain ($ document)
-	     (ready (lambda ()
-		      (chain $ (plot place data options))))))
+      (chain $ (plot place data options)))
     
     ;; insert-after
     (defun insert-a (new-node reference-node)
@@ -840,12 +845,14 @@
 	(:meta :charset "utf-8")
 	;; register js and css files
 	(loop for file in *js-css-files* do
-	     (if (string= (pathname-type file) "css")
-		 (htm (:link :rel "stylesheet" :type "text/css"
-			     :href (shorten-file-name file)))
-		 (htm (:script :type "text/javascript"
-			       :src (shorten-file-name file)))))
-
+	     (cond
+	       ((string= (pathname-type file) "css")
+		(htm (:link :rel "stylesheet" :type "text/css"
+			    :href (shorten-file-name file))))
+	       (t (htm (:script :type "text/javascript"
+				:src (shorten-file-name file))))))
+	
+	(:script :type "text/javascript" :src "https://www.google.com/jsapi")
 	(:script :type "text/javascript" (str (js-for-notebook-page notebook-filename)))
 	(:title :id "title" "YOMI"))
 
