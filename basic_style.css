@@ -3,10 +3,7 @@
     height: auto;
     width: 96%;
     margin: 0 auto
-    
 }
-
-
 
 #cellpad {
     overflow: scroll;
@@ -14,14 +11,35 @@
     width: 100%;
 }
 
-
-
-
 body {
     overflow: hidden;
 
 }
 
+.cell-div-main {
+    border-style : solid;
+    border-radius: 0.5em;
+    border-color : #FFFFFF;
+    border-width : 1px;
 
+    padding : 10px 10px 10px 10px;
+    margin  : 0 auto;
+    width   : 90%;
+    display : inline-block;
+}
+
+
+.cell-loc-area {
+    color   : gray;
+    display : inline-block;
+    padding : 10px;
+}
+
+
+.result-area {
+    /* pre-wrap is for showing strings as shown */
+    white-space : pre-wrap;
+    margin-left : 50px;
+}
 
 

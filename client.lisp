@@ -480,11 +480,12 @@
     ;; ====================================================
     ;; Make cell
     ;; ====================================================
-    ;; make-cell is a bit long but most of it is for styling
-
-    ;; cell is an object with a div element and an editor and some others
-    ;; if a sibling is given, make a cell after sibling
-    ;; otherwise append a cell as a child of cellpad
+    ;; cell is an object with a div element, an editor and some others.
+    ;; If a sibling (another cell) is given, make a cell after the sibling,
+    ;; otherwise append a cell as a child of "cell-pad" element
+    
+    ;; make-cell is a bit long, but most of the lines are just
+    ;; simple sequential chores
     (defun make-cell (&optional sibling)
       (let ((div-outer (chain document (create-element "div")))
 	    (div-main (chain document (create-element "div") ))
@@ -497,28 +498,11 @@
 	;; I think the following some lines must go to css file
 	;; But I will just leave it be for this experiental phase.
 	
-	;; style
-	(setf (chain div-main style border-style) "solid")
-	(setf (chain div-main style border-radius) "0.5em")
-	;; invisible border
-	;; border is shown when it is focused
-	(setf (chain div-main style border-color) "#FFFFFF")
-	(setf (chain div-main style border-width) "1px")
-	
-	(setf (chain div-main style padding) "10px 10px 10px 10px")
-	(setf (chain div-main style margin) "0 auto")
-	(setf (chain div-main style width) "90%")
-	(setf (chain div-main style display) "inline-block")
-
+	(setf (chain div-main class-name) "cell-div-main")
+	(setf (chain cell-loc-area class-name) "cell-loc-area")
+	;; place holder
 	(setf (chain cell-loc-area |innerHTML|) "000")
-	(setf (chain cell-loc-area style color) "gray" )
-	(setf (chain cell-loc-area style display) "inline-block" )
-	(setf (chain cell-loc-area style padding) "10px" )
-	
-	;; resultarea style
-	;; pre-wrap is for showing strings as shown
-	(setf (chain resultarea style white-space) "pre-wrap")
-	(setf (chain resultarea style margin-left) "50px")
+	(setf (chain resultarea class-name) "result-area")
 	
 	;; Append elements
 	(chain div-main (append-child textarea))
@@ -554,8 +538,7 @@
 		       "extraKeys"
 		       (create "Ctrl-Enter"
 			       (lambda (cm)))))
-	
-	
+
 	;; Set id to div-outer for later use
 	(defvar cell-id (+ "cell" cell-counter))
 	(setf (chain div-outer id) cell-id)
