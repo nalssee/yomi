@@ -4,12 +4,10 @@
   ((codelist :initarg :codelist
 	     :reader codelist)))
 
-
 (defun code->string (code)
   (if (and (listp code) (eql (first code) 'progn))
       (format nil "~{~S~^~%~}" (peel-package-name (rest code)))
       (format nil "~S" (peel-package-name code))))
-
 
 ;; todo 
 ;; a bit heavy 
@@ -23,7 +21,6 @@
 	     code))
 	(t (cons (peel-package-name (first code))
 		 (peel-package-name (rest code))))))
-
 
 (defun make-code (codelist)
   (make-instance
@@ -43,8 +40,6 @@
 		    (in-package :yomi)
 		    result)))))
 
-
-
 ;;
 ;; <- todo
 ;; Think further
@@ -53,7 +48,6 @@
      (make-code
       (sublis (mapcar #'cons ',args (list ,@args))
 	      ',body))))
-
 
 
 (defcode demo ()
@@ -93,7 +87,6 @@
   	    :xlabel "out of 100"
   	    :ylabel "out of 3000")))
   
-     
   (progn
     (defun samplot (width height radius &optional (point-shape "circle"))
       (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t
@@ -118,7 +111,6 @@
     (packv (packh (p1 0.2) (p1 0.3) (p1 0.6))
 	   (packh (p1 0.7) (p1 0.8) (p1 1.1))))
   
-  
   (progn
     (ql:quickload "alexandria")
     (defpackage :foo
@@ -138,15 +130,12 @@
     (flatten '((3) 4)))
 
   ;; (defcode defcode-example (x)
-  ;;   "defcode for interactive simulation, demo function itsef is written this way"
+  ;;   "defcode, for interactive simulation, demo function itsef is written this way"
   ;;   (progn
   ;;     (format t "sample plot")
   ;;     (plot (series 'x))))
 
   ;; (defcode-example '((1 2) (3 4) (5 6) (7 8)))
-
-  
   )
-
 
 

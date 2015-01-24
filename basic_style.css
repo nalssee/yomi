@@ -13,7 +13,6 @@
 
 body {
     overflow: hidden;
-
 }
 
 .cell-div-main {
@@ -28,18 +27,14 @@ body {
     display : inline-block;
 }
 
-
 .cell-loc-area {
     color   : gray;
     display : inline-block;
     padding : 10px;
 }
 
-
 .result-area {
     /* pre-wrap is for showing strings as shown */
     white-space : pre-wrap;
     margin-left : 50px;
 }
-
-

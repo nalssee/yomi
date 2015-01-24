@@ -42,7 +42,6 @@
 	(setf *default-working-package* package)
 	(error "Package ~A does not exist" package))))
 
-
 ;; ======================================================
 ;; messages are transferd as JSON string
 ;; ======================================================
@@ -66,7 +65,6 @@
 ;;  if it's a loaded file or newly created file
 ;; 4. command: saveFile (or saveFileWithCaution)
 ;;    data:    (filename cell-content-1 cell-content-2 ...)
-
 
 (defclass message ()
   ((command :initarg :command)
@@ -151,8 +149,6 @@
 		    (return))
 	     (bt:condition-wait *global-cv* *global-lock*))))))
 
-
-
 ;; It may look code duplication, but
 ;; you never know what's going to happen later,
 ;; Hope this is tolerable.
@@ -176,8 +172,6 @@
 				     (bt:condition-notify *global-cv*)))))))
 		    (return))
 	     (bt:condition-wait *global-cv* *global-lock*))))))
-
-
 
 ;; helper
 (defun vacant-room-for-thread? ()
@@ -203,8 +197,6 @@
       (json:encode-json code s)
       (send-message client "systemMessage" "saved"))))
 
-
-
 (handle-message (client "saveFileWithCaution" data)
   (let ((filename (string-trim '(#\space #\newline) (first data)))
 	(code (rest data)))
@@ -217,8 +209,6 @@
       (json:encode-json code s)
       (send-message client "systemMessage" "saved"))))
 
-
-
 (handle-message (client "loadFile" data)
   (with-open-file (s (merge-pathnames-as-file
 		      (fad:pathname-as-directory *working-directory*)
@@ -226,7 +216,6 @@
     (send-message
      client "code"
      (json:decode-json s))))
-
 
 (handle-message (client "interrupt" data)
   (declare (ignore data client))
@@ -244,12 +233,9 @@
 	c1
 	"systemMessage" "interrupted")))
 
-
-
 ;; ============================================
 ;; evaluate code
 ;; ============================================
-
 (defun eval-code-list (data)
   (loop
      for (cell-no cell-content) in data collect
@@ -265,10 +251,8 @@
 	  (values result stdout)))
     (error (c) (values c ""))))
 
-
 (defgeneric make-evaled-result (result stdout cell-no)
   (:documentation "make an instance of evaled-result based on result evaluated"))
-
 
 ;; comments only content
 (defmethod make-evaled-result ((result end-of-file) stdout cell-no)
@@ -321,7 +305,6 @@
        ;; cell no and stdout is meaningless here
        (make-evaled-result elt "" nil)))
 
-
 (defmethod make-evaled-result ((result packv) stdout cell-no)
   (make-instance 'evaled-result
 		 :cellno cell-no
@@ -335,7 +318,6 @@
 		 :type "packh"
 		 :value (packup (pack-elts result))
 		 :stdout stdout))
-
 
 ;; all the rest
 (defmethod make-evaled-result ((result t) stdout cell-no)
@@ -360,12 +342,9 @@
     (in-package :yomi)
     result))
 
-
-
 ;; ===================================================
 ;; Websocket
 ;; ===================================================
-
 (defclass yomi-resource (ws-resource) ())
 
 (defmethod resource-client-connected ((res yomi-resource) client)
@@ -407,11 +386,9 @@
 		   :command command
 		   :data data))))
 
-
 ;; Binary data is not used...yet
 ;; (defmethod resource-received-binary ((res yomi-resource) client message)
 ;;   (format t "got binary frame ~s from client ~s" (length message) client))
-
 
 ;; ======================================================
 ;; Run hunchentoot server
@@ -534,12 +511,10 @@
 	       (return port))))))
 
 
-
 (define-easy-handler (yomi-main :uri "/yomi") (yomifile)
   (let ((*attribute-quote-char* #\"))
     (if (and (not (null yomifile))
 	     (= (length yomifile) 3))
 	(notebook-page (second yomifile))
 	(notebook-page))))
-
 

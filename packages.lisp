@@ -1,34 +1,27 @@
-
-
-
 (defpackage :yomi
   (:use :cl :parenscript :cl-who :hunchentoot :clws :cl-fad)
   (:export
    :start-yomi
-   :series
-   :plot
-   :hist
    :demo
-
-   :create
 
    :cd
    :ls
+   :keymap
    
+   :plot
+   :series
+   :hist
    :packv
    :packh
-   
-   :keymap
+   ;; for flot option creation.
+   :create
+
    :set-package
    :defcode
    ))
 
-
+;; Using yomi package directly seems dangerous.
 (defpackage :ynb
   (:use :cl :yomi))
-
-
-
-
 
 

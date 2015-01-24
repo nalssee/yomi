@@ -1,32 +1,22 @@
-
-
 (asdf:defsystem :yomi
   :author "Kenjin Che <kenjin@sdf.org>"
-  :depends-on (:cl-who
-	       :hunchentoot
+  :depends-on (:hunchentoot
 	       :clws
-	       :parenscript
-	       :cl-json
+	       :bordeaux-threads
+	       :usocket
 	       #-(AND DARWIN SBCL)
 	       :inferior-shell
 	       :cl-fad
-	       :bordeaux-threads
-	       :usocket
 
-	       )
-
+	       :parenscript
+	       :cl-who
+	       :cl-json)
   :serial t
-  :components (
-	       (:file "packages")
+  :components ((:file "packages")
 	       (:file "parameters")
 
 	       (:file "plot")
 	       (:file "defcode")
 	       (:file "client")
-	       (:file "server")
-	       
-	       )
-
-  )
-
+	       (:file "server")))
 

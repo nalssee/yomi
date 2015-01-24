@@ -23,7 +23,6 @@
     ;; cellpad
     ;; cells are going to be appended in this element
     (defvar cell-pad nil)
-
     
     ;; Show system messages here    
     (defvar rename-span nil)
@@ -71,15 +70,10 @@
 	     (decf i))
 	   s)))
 
-    
-
-    
     ;; ========================================================
     ;; User Interface
     ;; Button actions from web browser
     ;; =========================================================
-
-
     (defun open-in-new-tab (url)
       (setf win (window.open url "_blank"))
       (chain win (focus)))
@@ -120,7 +114,6 @@
 				      "interrupt"
 				      ""))))))
 
-   
     ;; Eval all cells from the focused cell
     ;; Caution: Not all cells, all cells from the focused cell.
     (defun eval-forward ()
@@ -136,7 +129,6 @@
 			       (loop for c in cells-to-eval
 				  for i from first-cell-position collect
 				    (array i (chain (getprop c 'editor) (get-value)))))))))))
-
     
     (defun move-up ()
       (let ((n (cell-position focused-cell)))
@@ -155,7 +147,6 @@
 	    (auto-scroll)
 	    (refresh-cell-loc)))))
     
-    
     (defun move-down ()
       ;; only when the focused cell is not the last one
       (when (not (last-cell-p focused-cell))
@@ -169,7 +160,6 @@
 	  (setf (getprop all-cells n) next)
 	  (auto-scroll)
 	  (refresh-cell-loc))))
-
 
     ;; add a cell after the focused cell
     (defun add-cell ()
@@ -213,8 +203,6 @@
 		(chain (getprop cell 'editor) (get-doc) (set-value content))
 		(move-up)))
 	  (refresh-cell-loc))))
-    
-
     ;; 
     (defun rename-input-show-up ()
       (let ((rename-input (chain document (get-element-by-id "rename_input"))))
@@ -274,7 +262,6 @@
     ;; While buttons send messages to the server through web socket
     ;; 'handle-message' handles messages from the server
     ;; =========================================================
-
     ;; handle-message pairs with handle-message defined in server.lisp
     (defun handle-message (msg)
       (let* ((json-msg (chain +JSON+ (parse msg)))
@@ -350,12 +337,10 @@
 		   (notify-blink-enforce "Interrupted!!" "dodgerblue")))))
     
 
-
     ;; =========================================================
     ;; Now you need to render results in the result area
     ;; render-result pairs with "build-message-to-send' in server.lisp
     ;; =========================================================
-    
     ;; don't worry about cell focusing here
     ;; resul-area is a div elementp
     (defun render-result (result-area evaled-result)
@@ -409,7 +394,6 @@
 		  (setf (chain title-element |innerHTML|) (@ value title)))))))
 
     
-
     ;; code rendering is different from notebook file loading
     ;; You can type in message in text area and the server sends a message
     ;; to generate new cells
@@ -429,13 +413,11 @@
 			     (format "Unless this is the focused last cell,"
 				     "cell generation expression is ignored."))))))
     
-    
     ;; Render error message
     (setf (getprop rendering-function-set "error")
 	  (lambda (result-area value stdout)
 	    (clear-result-area result-area)
 	    (setf (chain result-area |innerHTML|) value)))
-
 
     ;; Sometimes you may want to render multiple results in a single
     ;; result area, especially for plots.
@@ -473,9 +455,6 @@
 		   ;; <--
 		   (setf (chain div style display) "inline-block")
 		   (render-result div h1)))))  
-
-    
-    
 
     ;; ====================================================
     ;; Make cell
@@ -578,7 +557,6 @@
     ;; ====================================================
     ;; misc.
     ;; ====================================================
-    
     (defun focus-to-next-cell (cell)
       (let ((cell-to-focus
 	     ;; if the given cell is the last cell and the content is empty
@@ -615,7 +593,6 @@
       (setf focused-cell cell)
       (turn-on-border cell))
 
-    
     ;; scroll to focused element to show up
     (defun auto-scroll ()
       (chain (getprop focused-cell 'div-outer) (scroll-into-view)))
@@ -671,18 +648,10 @@
 	   (setf (chain (getprop cell 'cell-loc-area) |innerHTML|)
 		 (pad (chain i (to-string)) 3))))
 
-
-
-    
     ;; ====================================================
     ;; Helpers
     ;; ====================================================
-
-    ;; (defun draw-chart (place data options)
-    ;;   (chain ($ document)
-    ;; 	     (ready (lambda ()
-    ;; 		      (chain $ (plot place data options))))))
-    
+    ;; "flot" specific
     (defun draw-chart (place data options)
       (chain $ (plot place data options)))
     
@@ -708,7 +677,6 @@
     (defun empty-cell-p (cell)
       (= (chain (getprop cell 'editor) (get-value)) ""))
     
-
     ;; returns an integer
     (defun cell-position (cell)
       (position (getprop cell 'no)
@@ -737,7 +705,6 @@
 	(if (= (chain splited length) 1)
 	    (getprop splited 0)
 	    (chain splited (splice 0 (- (chain splited length) 1)) (join ".")))))
-    
     
     ;; chage title to notebook name
     (defun change-title ()
@@ -793,8 +760,6 @@
 	  (lambda (event)
 	    (handle-message (chain event data))))
 
-
-    
     (defun trim-spaces (element)
       (setf (chain element |innerHTML|)
 	    (chain element |innerHTML| (trim))))
@@ -812,12 +777,9 @@
 	    (trim-spaces rename-save))))
   )
 
-    
 
 ;; page html
-
 (defparameter *menubutton-size* "40px")
-
 
 (defun notebook-page (&optional notebook-filename)
   (let ((untitled (string (gensym "UNTITLED"))))
@@ -931,9 +893,4 @@
 	      )
 
 	(:div :id "cellpad"))))))
-
-
-
-
-
 
