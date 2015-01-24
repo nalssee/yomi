@@ -393,7 +393,6 @@
 		  (setf (chain title-element align) "center")
 		  (setf (chain title-element |innerHTML|) (@ value title)))))))
 
-    
     ;; code rendering is different from notebook file loading
     ;; You can type in message in text area and the server sends a message
     ;; to generate new cells

@@ -17,7 +17,8 @@
    :create
 
    :set-package
-   :defcode
+   :make-code
+   :append-code
    ))
 
 ;; Using yomi package directly seems dangerous.

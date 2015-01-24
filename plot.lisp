@@ -32,9 +32,11 @@
 	     (case key
 	       ;; option adjoining
 	       (:xlabel (setf options
-			      (adjoin-option :xaxes (list (create :axis-label value)) options)))
+			      (adjoin-option
+			       :xaxes (list (create :axis-label value)) options)))
 	       (:ylabel (setf options
-			      (adjoin-option :yaxes (list (create :axis-label value)) options)))
+			      (adjoin-option
+			       :yaxes (list (create :axis-label value)) options)))
 	       (:xrange (setf options
 			      (adjoin-option :xaxis (create :min (first value)
 							    :max (second value))

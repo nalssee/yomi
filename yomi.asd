@@ -16,7 +16,7 @@
 	       (:file "parameters")
 
 	       (:file "plot")
-	       (:file "defcode")
+	       (:file "code")
 	       (:file "client")
 	       (:file "server")))
 
