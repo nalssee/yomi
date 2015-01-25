@@ -748,7 +748,10 @@
 	    (lambda (event)
 	      (handle-message (chain event data)))))
     ;; 
-    (setf (chain window onload) init)))
+    (setf (chain window onload) init)
+    (setf (chain window onbeforeunload)
+	  (lambda () (save-notebook) "Closing Notebook")))
+  )
 
 
 
