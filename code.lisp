@@ -26,8 +26,9 @@
 
 (defun append-code (&rest codes)
   "Append instances of code class"
-  (apply #'make-code
-	 (mapcar #'codelist codes)))
+  (make-instance
+   'code
+   :codelist (mapcan #'codelist codes)))
 
 (defun code->string (code)
   (if (and (listp code) (eql (first code) 'progn))
