@@ -222,19 +222,24 @@
 
 (handle-message (client "interrupt" data)
   (declare (ignore data client))
-  (loop for thread across *eval-threads-pool*
-     for i from 0 do
-       (when (and (bt:threadp thread)
-		  (bt:thread-alive-p thread))
-	 (bt:destroy-thread thread))
-     ;; nullify
-       (setf (aref *eval-threads-pool* i) nil))
-  
-  ;; interrupt message must be sent to all clients
-  (loop for c1 in *notebook-clients* do
-       (send-message
-	c1
-	"systemMessage" "interrupted")))
+  (let ((n-running-threads 0))
+    (loop
+       for thread across *eval-threads-pool*
+       for i from 0 do
+	 (when (and (bt:threadp thread)
+		    (bt:thread-alive-p thread))
+	   (incf n-running-threads)
+	   (bt:destroy-thread thread))
+       ;; nullify no matter what
+	 (setf (aref *eval-threads-pool* i) nil))
+    ;; send message only when there were running threads
+    (when (> n-running-threads 0)
+      ;; interrupt message must be sent to all clients
+      (loop for c1 in *notebook-clients* do
+	   (send-message
+	    c1
+	    "systemMessage" "interrupted")))))
+
 
 ;; ============================================
 ;; evaluate code
