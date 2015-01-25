@@ -75,12 +75,16 @@
     ;; User Interface
     ;; Button actions from web browser
     ;; =========================================================
+    ;; Many of the actions are prohibited while on processing,
+    ;; You need to interrupt it first.
+    
     (defun open-in-new-tab (url)
       (setf win (window.open url "_blank"))
       (chain win (focus)))
     
     (defun choose-notebook ()
-      (chain document (get-element-by-id "choose-notebook") (click)))
+      (unless (processing-p)
+	(chain document (get-element-by-id "choose-notebook") (click))))
 
     ;; ws is the name of websocket
 
@@ -88,26 +92,27 @@
     ;; "evalk" means evaluation by keyboard short cut (Ctrl-Enter)
     ;; See for yourself what's the difference
     (defun eval-cell-and-go (cell &optional (command "eval"))
-      (let ((cell-content (chain (getprop cell 'editor) (get-value)))
-	    (cell-no (cell-position cell)))
-	;; It is meaninless to evaluate empty cell
-	;; Even if it is the empty cell if it's not the last cell
-	;; it is evaluated for convenience
-	(unless (and (last-cell-p cell)
-		     (= (chain cell-content (trim)) ""))
-	  (notify "PROCESSING" "orange")
-	  ;; Message is sent as a JSON string
-	  (chain ws (send (chain +JSON+ (stringify
-					 (make-message
-					  command
-					  ;; Even if we are evaluating only one cell
-					  ;; it is sent as a list to avoid in accordance
-					  ;; with eval-forward.
-					  (array
-					   ;; List may not be the best
-					   ;; data structure for this job
-					   ;; I just want to simplify it though.
-					   (array cell-no cell-content))))))))))
+      (unless (processing-p)
+	(let ((cell-content (chain (getprop cell 'editor) (get-value)))
+	      (cell-no (cell-position cell)))
+	  ;; It is meaninless to evaluate empty cell
+	  ;; Even if it is the empty cell if it's not the last cell
+	  ;; it is evaluated for convenience
+	  (unless (and (last-cell-p cell)
+		       (= (chain cell-content (trim)) ""))
+	    (notify "PROCESSING" "orange")
+	    ;; Message is sent as a JSON string
+	    (chain ws (send (chain +JSON+ (stringify
+					   (make-message
+					    command
+					    ;; Even if we are evaluating only one cell
+					    ;; it is sent as a list to avoid in accordance
+					    ;; with eval-forward.
+					    (array
+					     ;; List may not be the best
+					     ;; data structure for this job
+					     ;; I just want to simplify it though.
+					     (array cell-no cell-content)))))))))))
     
     (defun interrupt ()
       (chain ws (send (chain +JSON+ (stringify
@@ -118,90 +123,97 @@
     ;; Eval all cells from the focused cell
     ;; Caution: Not all cells, all cells from the focused cell.
     (defun eval-forward ()
-      (let* ((cells-to-eval (chain all-cells
-				   (slice (cell-position focused-cell))))
-	     (first-cell-position (cell-position focused-cell)))
-	(notify "PROCESSING" "orange")
-	(chain
-	 ws
-	 (send (chain +JSON+ (stringify
-			      (make-message
-			       "eval"
-			       (loop for c in cells-to-eval
-				  for i from first-cell-position collect
-				    (array i (chain (getprop c 'editor) (get-value)))))))))))
+      (unless (processing-p)
+	(let* ((cells-to-eval (chain all-cells
+				     (slice (cell-position focused-cell))))
+	       (first-cell-position (cell-position focused-cell)))
+	  (notify "PROCESSING" "orange")
+	  (chain
+	   ws
+	   (send (chain +JSON+ (stringify
+				(make-message
+				 "eval"
+				 (loop for c in cells-to-eval
+				    for i from first-cell-position collect
+				      (array i (chain (getprop c 'editor) (get-value))))))))))))
     
     (defun move-up ()
-      (let ((n (cell-position focused-cell)))
-	;; only when focused-cell is not the first cell
-	(when (> n 0)
-	  (let ((previous (getprop all-cells (1- n))))
-	    ;; insert before
-	    ;; this is a bit different from insertBefore, side effect only
-	    (insert-b (getprop focused-cell 'div-outer)
-		      (getprop previous 'div-outer))
-	    ;; all-cells variable must be handled correctly
-	    ;; swap them
-	    (setf (getprop all-cells (1- n)) focused-cell)	    
-	    (setf (getprop all-cells n) previous)
-	    ;; the following should be obvious
-	    (auto-scroll)
-	    (refresh-cell-loc)))))
+      (unless (processing-p)
+	(let ((n (cell-position focused-cell)))
+	  ;; only when focused-cell is not the first cell
+	  (when (> n 0)
+	    (let ((previous (getprop all-cells (1- n))))
+	      ;; insert before
+	      ;; this is a bit different from insertBefore, side effect only
+	      (insert-b (getprop focused-cell 'div-outer)
+			(getprop previous 'div-outer))
+	      ;; all-cells variable must be handled correctly
+	      ;; swap them
+	      (setf (getprop all-cells (1- n)) focused-cell)	    
+	      (setf (getprop all-cells n) previous)
+	      ;; the following should be obvious
+	      (auto-scroll)
+	      (refresh-cell-loc))))))
     
     (defun move-down ()
-      ;; only when the focused cell is not the last one
-      (when (not (last-cell-p focused-cell))
-	(let* ((n (cell-position focused-cell))
-	       ;; next cell
-	       (next (getprop all-cells (1+ n))))
-	  (insert-b (getprop next 'div-outer)
-		    (getprop focused-cell 'div-outer))
+      (unless (processing-p)
+	;; only when the focused cell is not the last one
+	(when (not (last-cell-p focused-cell))
+	  (let* ((n (cell-position focused-cell))
+		 ;; next cell
+		 (next (getprop all-cells (1+ n))))
+	    (insert-b (getprop next 'div-outer)
+		      (getprop focused-cell 'div-outer))
 	  
-	  (setf (getprop all-cells (1+ n)) focused-cell)
-	  (setf (getprop all-cells n) next)
-	  (auto-scroll)
-	  (refresh-cell-loc))))
+	    (setf (getprop all-cells (1+ n)) focused-cell)
+	    (setf (getprop all-cells n) next)
+	    (auto-scroll)
+	    (refresh-cell-loc)))))
 
     ;; add a cell after the focused cell
     (defun add-cell ()
-      (make-cell focused-cell))
+      (unless (processing-p)
+	(make-cell focused-cell)))
+    
     
     ;; Remove a focused-cell and focus goes up
     ;; if there's only one cell do nothing
     (defun remove-cell ()
-      (when (> (chain all-cells length) 1)
-	(let ((div-outer (getprop focused-cell 'div-outer))
-	      (n (cell-position focused-cell)))
-	  ;; Save the removed cell value in removed-cell-contents
-	  ;; for future recover
-	  ;; only editor value is saved
-	  ;; Content in result area is simple thrown away
-	  (chain removed-cell-contents
-		 (push (array n		; cell position at removal
-			      (chain
-			       (getprop (getprop all-cells n) 'editor) (get-value)))))
-	  ;; cut it out
-	  (chain all-cells (splice n 1))
-	  (chain div-outer (remove))
-	  (get-it-focused
-	   (getprop all-cells (chain |Math| (max 0 (- n 1)))))
-	  (refresh-cell-loc))))
+      (unless (processing-p)
+	(when (> (chain all-cells length) 1)
+	  (let ((div-outer (getprop focused-cell 'div-outer))
+		(n (cell-position focused-cell)))
+	    ;; Save the removed cell value in removed-cell-contents
+	    ;; for future recover
+	    ;; only editor value is saved
+	    ;; Content in result area is simple thrown away
+	    (chain removed-cell-contents
+		   (push (array n	; cell position at removal
+				(chain
+				 (getprop (getprop all-cells n) 'editor) (get-value)))))
+	    ;; cut it out
+	    (chain all-cells (splice n 1))
+	    (chain div-outer (remove))
+	    (get-it-focused
+	     (getprop all-cells (chain |Math| (max 0 (- n 1)))))
+	    (refresh-cell-loc)))))
     
     ;; Recover the last removed cell
     (defun undo ()
-      (when (> (chain removed-cell-contents length) 0)
-	(let* ((to-recover (chain removed-cell-contents (pop)))
-	       ;; cell postion at its removal.
-	       ;; Recovered cell will be there.
-	       (n (getprop to-recover 0))
-	       (content (getprop to-recover 1)))
-	  (if (= n (chain all-cells length))
-	      ;; last cell is removed
-	      (chain (getprop (make-cell) 'editor) (get-doc) (set-value content))
-	      (let ((cell (make-cell (getprop all-cells n))))
-		(chain (getprop cell 'editor) (get-doc) (set-value content))
-		(move-up)))
-	  (refresh-cell-loc))))
+      (unless (processing-p)
+	(when (> (chain removed-cell-contents length) 0)
+	  (let* ((to-recover (chain removed-cell-contents (pop)))
+		 ;; cell postion at its removal.
+		 ;; Recovered cell will be there.
+		 (n (getprop to-recover 0))
+		 (content (getprop to-recover 1)))
+	    (if (= n (chain all-cells length))
+		;; last cell is removed
+		(chain (getprop (make-cell) 'editor) (get-doc) (set-value content))
+		(let ((cell (make-cell (getprop all-cells n))))
+		  (chain (getprop cell 'editor) (get-doc) (set-value content))
+		  (move-up)))
+	    (refresh-cell-loc)))))
     ;; 
     (defun rename-input-show-up ()
       (let ((rename-input (chain document (get-element-by-id "rename_input"))))
@@ -497,17 +509,18 @@
 		       key-map (lisp *keymap*)
 		       match-brackets true
 		       viewport-margin |Infinity|)))
-
-	;; Is this too much burden?
+	
+	;; when you type in anything, turn file name to gray
+	;; Is this too much?
 	(chain editor
 	       (on "change"
 		   (lambda ()
 		     (setf (chain rename-span style color) "gray")
-		     (unless (keep-notice-condition)
+		     (unless (processing-p)
 		       (notify "" "")))))
 
 	(setf (chain rename-span style color) "gray")
-	(unless (keep-notice-condition)
+	(unless (processing-p)
 	  (notify "" ""))
 
 	;; Disable ctrl-enter in the editor
@@ -598,7 +611,7 @@
       (setf (chain notice |innerHTML|) message)
       (setf (chain notice style color) color-string))
 
-    (defun keep-notice-condition ()
+    (defun processing-p ()
       (= (chain notice |innerHTML|) "PROCESSING"))
     
     ;; not a very efficient way but
@@ -610,7 +623,7 @@
 	   (setf (chain (getprop cell 'cell-loc-area) |innerHTML|)
 		 (pad (chain i (to-string)) 3)))
       (setf (chain rename-span style color) "Gray")
-      (unless (keep-notice-condition)
+      (unless (processing-p)
 	(notify "" "")))
 
     ;; ====================================================
