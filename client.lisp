@@ -75,7 +75,7 @@
     ;; User Interface
     ;; Button actions from web browser
     ;; =========================================================
-    ;; Many of the actions are prohibited while on processing,
+    ;; Most of the actions are prohibited while on processing,
     ;; You need to interrupt it first.
     
     (defun open-in-new-tab (url)
@@ -234,7 +234,7 @@
 	(setf (chain rename-input style display) "none")))
 
     (defun save-notebook ()
-      (unless (empty-notebook-p)
+      (unless (or (empty-notebook-p) (processing-p))
 	(chain
 	 ws
 	 (send (chain +JSON+
