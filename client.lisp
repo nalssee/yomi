@@ -750,7 +750,7 @@
     ;; 
     (setf (chain window onload) init)
     (setf (chain window onbeforeunload)
-	  (lambda () (save-notebook) "Closing Notebook")))
+	  (lambda () (save-notebook) "Closing Current Notebook")))
   )
 
 
