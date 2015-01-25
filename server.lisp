@@ -35,11 +35,15 @@
 	(error "Keymap must of one of ~S, ~S, or ~S, given ~A"
 	       "emacs" "vim" "sublime" editor))))
 
-
 (defun set-package (package)
   (let ((package (string-upcase (string package))))
     (if (find-package package)
-	(setf *default-working-package* package)
+	(progn
+	  (setf *default-working-package* package)
+	  ;; Send all clients to set package
+	  (loop for c1 in *notebook-clients* do
+	       (send-message c1 "systemMessage" (list "set-package" package)))
+	  (format nil "Package set to ~A" package))
 	(error "Package ~A does not exist" package))))
 
 ;; ======================================================
@@ -81,8 +85,7 @@
 ;;    data: a string
 
 ;; 4. command: systemMessage
-;;    data: a string
-
+;;    data: anything
 
 (defclass evaled-result ()
   ((cellno :initarg :cellno :initform nil)
@@ -215,7 +218,7 @@
 		      data))
     (send-message
      client "code"
-     (json:decode-json s))))
+     (list data (json:decode-json s)))))
 
 (handle-message (client "interrupt" data)
   (declare (ignore data client))
@@ -513,8 +516,7 @@
 
 (define-easy-handler (yomi-main :uri "/yomi") (yomifile)
   (let ((*attribute-quote-char* #\"))
-    (if (and (not (null yomifile))
-	     (= (length yomifile) 3))
+    (if (and (listp yomifile) (> (length yomifile) 1))
 	(notebook-page (second yomifile))
 	(notebook-page))))
 

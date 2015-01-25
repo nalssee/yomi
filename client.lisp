@@ -26,15 +26,20 @@
     
     ;; Show system messages here    
     (defvar rename-span nil)
-    (defvar rename-save nil)
+    ;; Since rename-span is used for system notifications as well,
+    ;; rename span content and color must be saved to revert it back
+    ;; after notifications
+    (defvar rename-span-content nil)
+    (defvar rename-span-color "Gray")
     
     ;; How many cells are created
     (defvar cell-counter 0)
-
     ;; 0 : never been saved with the current file name
     ;; 1 : saved at least once
     (defvar ever-been-saved 0)
 
+    (defvar current-package nil)
+    
     ;; for future easy extension
     ;; Idea adopted from data directed programming in SICP
     (defvar message-handling-function-set (create))
@@ -184,10 +189,8 @@
 	  (chain div-outer (remove))
 	  (get-it-focused
 	   (getprop all-cells (chain |Math| (max 0 (- n 1)))))
-	  
 	  (refresh-cell-loc))))
     
-
     ;; Recover the last removed cell
     (defun undo ()
       (when (> (chain removed-cell-contents length) 0)
@@ -215,34 +218,29 @@
       (let* ((rename-input  (chain document (get-element-by-id "rename_input")))
 	     ;; trimmed rename-input value
 	     (rename-input-value (chain rename-input value (trim))))
-
-	(unless (= (chain rename-save |innerHTML|)
-		   rename-input-value)
-	  
+	(unless (= rename-span-content rename-input-value)
 	  (setf ever-been-saved 0)
 	  (setf (chain rename-span |innerHTML|) rename-input-value)
-	  (setf (chain rename-save |innerHTML|)
-		(chain rename-span |innerHTML|)))
-	
+	  (setf (chain rename-span style color)  "Gray")
+	  (setf rename-span-content rename-input-value)
+	  (setf rename-span-color "Gray"))
 	(setf (chain rename-span style display)  "inline")
 	(setf (chain rename-input style display) "none")))
 
     (defun save-notebook ()
       (unless (empty-notebook-p)
-	(let ((filename (chain rename-save |innerHTML|)))
-	  (chain
-	   ws
-	   (send (chain +JSON+
-			(stringify
-			 (make-message
-			  (if (= ever-been-saved 0)
-			      "saveFileWithCaution"
-			      "saveFile")
-			  ;; first element of data list is a filename to save
-			  (append (list filename)
-				  (loop for cell in all-cells collect
-				       (chain (getprop cell 'editor) (get-value))))))))))))
-    
+	(chain
+	 ws
+	 (send (chain +JSON+
+		      (stringify
+		       (make-message
+			(if (= ever-been-saved 0)
+			    "saveFileWithCaution"
+			    "saveFile")
+			;; first element of data list is a filename to save
+			(append (list rename-span-content)
+				(loop for cell in all-cells collect
+				     (chain (getprop cell 'editor) (get-value)))))))))))
     
     (defun load-notebook-file (notebook-filename)
       (setf ever-been-saved 1)
@@ -250,13 +248,7 @@
 	(chain ws (send (chain +JSON+ (stringify
 				       (make-message
 					"loadFile"
-					notebook-filename)))))
-	(let ((filename (cutout-extension notebook-filename)))
-	  (setf (chain rename-span |innerHTML|) filename)
-	  (setf (chain rename-save |innerHTML|) filename)
-	  (setf (chain document (get-element-by-id "rename_input") value)
-		filename))))
-
+					notebook-filename)))))))
     
     ;; =========================================================
     ;; While buttons send messages to the server through web socket
@@ -276,7 +268,7 @@
 	  ;; data is a list of evaled-result
 	  (lambda (data)
 	    ;; rename_span message reverted back to notebook name
-	    (notify-revert)
+	    (revert-rename-span)
 	    (let ((first-eval-cell-position (chain (first data) cellno))
 		  (last-eval-cell-position  (chain (last1 data) cellno)))
 	      (loop for d1 in data
@@ -290,7 +282,7 @@
     ;; almost the same as the above except the last part
     (setf (getprop message-handling-function-set "evaledk")
 	  (lambda (data)
-	    (notify-revert)
+	    (revert-rename-span)
 	    (let ((first-eval-cell-position (chain (first data) cellno)))
 	      (loop for d1 in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
@@ -302,17 +294,24 @@
     (setf (getprop message-handling-function-set "code")
 	  ;; set values to cells
 	  (lambda (data)
-	    ;; first cell is made at the page loading
-	    ;; hence no need for make-cell
-	    (chain (getprop (first-cell) 'editor) (get-doc) (set-value (getprop data 0)))
-	    (loop for exp in (chain data (slice 1)) do
-		 (chain (getprop (make-cell) 'editor)
-			(get-doc) (set-value exp)))
-	    ;; focus back to the first cell and eval-forward
-	    (get-it-focused (first-cell))
-	    (eval-forward)
-	    (change-title)))
-
+	    (let ((filename (cutout-extension (first data)))
+		  (data (getprop data 1)))
+	      ;; first cell is made at the page loading
+	      ;; hence no need for make-cell
+	      (chain (getprop (first-cell) 'editor) (get-doc) (set-value (getprop data 0)))
+	      (loop for exp in (chain data (slice 1)) do
+		   (chain (getprop (make-cell) 'editor)
+			  (get-doc) (set-value exp)))
+	      (setf (chain rename-span |innerHTML|) filename)
+	      (setf rename-span-content filename)
+	      (color-rename-span "green")
+	      (setf (chain document (get-element-by-id "rename_input") value)
+	      	    filename)
+	      (change-title)
+	      
+	      ;; focus back to the first cell and eval-forward
+	      (get-it-focused (first-cell))
+	      (eval-forward))))
 
     ;; System error handling
     (setf (getprop message-handling-function-set "systemError")
@@ -331,11 +330,22 @@
 		   ;; This message is arrived means that
 		   ;; the file is saved well.
 		   (setf ever-been-saved 1)
-		   (notify-blink "Saved Successfully!!" "GREEN")
+		   (let ((current-message (chain rename-span |innerHTML|)))
+		     (if (or (= current-message "Processing")
+			     (= current-message "Interrupted"))
+			 (setf rename-span-color "green")
+			 (color-rename-span "green")))
 		   (change-title))
 		  ((= data "interrupted")
-		   (notify-blink-enforce "Interrupted!!" "dodgerblue")))))
-    
+		   (notify-blink-enforce "Interrupted" "dodgerblue"))
+		  ;; set package
+		  ((and (instanceof data |Array|)
+			(= (first data) "set-package"))
+		   (setf current-package (getprop data 1))
+		   (change-title)
+		   (notify-blink
+		    (chain "{0} {1}" (format "set-package" current-package))
+		    "green")))))
 
     ;; =========================================================
     ;; Now you need to render results in the result area
@@ -347,7 +357,7 @@
       ((getprop rendering-function-set (@ evaled-result type))
        result-area
        (@ evaled-result value) (@ evaled-result stdout)))
-    
+
     
     ;; Register result rendering functions
     
@@ -507,7 +517,14 @@
 		       key-map (lisp *keymap*)
 		       match-brackets true
 		       viewport-margin |Infinity|)))
+
+	;; Is this too much burden?
+	(chain editor
+	       (on "change"
+		   (lambda () (color-rename-span "gray"))))
 	
+	(color-rename-span "gray")
+
 	;; Disable ctrl-enter in the editor
 	;; it is going to be used as cell evaluation
 	;; if you don't include the following expression
@@ -571,14 +588,13 @@
 		    (make-cell))
 		   (t (getprop all-cells (1+ (cell-position cell)))))))
 	(get-it-focused cell-to-focus)))
-
+    
     (defun turn-on-border (cell)
       (let ((divmain (getprop cell 'div-main))
 	    (cla (getprop cell 'cell-loc-area)))
 	(setf (chain divmain style border-color) "green")
 	(setf (chain cla style color) "green")))
     
-   
     (defun turn-off-border (cell)
       (when cell
 	(let ((divmain (getprop cell 'div-main))
@@ -596,48 +612,41 @@
     (defun auto-scroll ()
       (chain (getprop focused-cell 'div-outer) (scroll-into-view)))
 
+    ;; change colors of rename-span and rename-span-color
+    (defun color-rename-span (color-string)
+      (setf (chain rename-span style color) color-string)
+      (setf rename-span-color color-string))
+
     ;; Blink rename_span content for a second
     ;; unless the server is processing the request
     (defun notify-blink (message color-string)
-      (let ((saved-span-content (chain rename-save |innerHTML|)))
-	;;
-	(unless (= (chain rename-span |innerHTML|) "Processing")
+      (unless (= (chain rename-span |innerHTML|) "Processing")
 	  (setf (chain rename-span |innerHTML|) message)
 	  (setf (chain rename-span style color) color-string)
 	  (set-timeout (lambda ()
 			 ;; revert it back
-			 (setf (chain rename-span |innerHTML|) saved-span-content)
-			 ;; gray is the default color
-			 (setf (chain rename-span style color) "gray"))
-		       ;; 1 sec
-		       1000))))
+			 (revert-rename-span))
+		       1000)))
     
     ;; Blink rename_span no matter what
     ;; used for "interrupt"
     (defun notify-blink-enforce (message color-string)
-      (let ((saved-span-content (chain rename-save |innerHTML|)))
-	(setf (chain rename-span |innerHTML|) message)
-	(setf (chain rename-span style color) color-string)
-	(set-timeout (lambda ()
+      (setf (chain rename-span |innerHTML|) message)
+      (setf (chain rename-span style color) color-string)
+      (set-timeout (lambda ()
 		       ;; revert it back
-		       (setf (chain rename-span |innerHTML|) saved-span-content)
-		       ;; gray is the default color
-		       (setf (chain rename-span style color) "GRAY"))
-		     1000)))
+		     (revert-rename-span))
+		   1000))
 
     ;; Change rename_span message
     (defun notify (message color-string)
       (setf (chain rename-span |innerHTML|) message)
       (setf (chain rename-span style color) color-string))
-    
 
-    ;; Revert rename_span content to the one on rename_save,
-    ;; which is a file(notebook) name
-    (defun notify-revert ()
-      (setf (chain rename-span |innerHTML|)
-	    (chain rename-save |innerHTML|))
-      (setf (chain rename-span style color) "GRAY"))
-
+    (defun revert-rename-span ()
+      (setf (chain rename-span |innerHTML|) rename-span-content)
+      (setf (chain rename-span style color) rename-span-color))
+        
     ;; not a very efficient way but
     ;; I don't want to bother.
     ;; computers are fast enough
@@ -645,7 +654,9 @@
       (loop for i from 1
 	 for cell in all-cells do
 	   (setf (chain (getprop cell 'cell-loc-area) |innerHTML|)
-		 (pad (chain i (to-string)) 3))))
+		 (pad (chain i (to-string)) 3)))
+      ;; Notebook ontent is changed
+      (color-rename-span "gray"))
 
     ;; ====================================================
     ;; Helpers
@@ -709,79 +720,78 @@
     (defun change-title ()
       (let ((title-element (chain document (get-element-by-id "title"))))
 	(setf (chain title-element |innerHTML|)
-	      (+ "YNB "
-		 (chain document (get-element-by-id "rename_input") value)))))
+	      (+ current-package " " rename-span-content))))
 
     (defun clear-result-area (result-area)
       (setf (chain result-area |innerHTML|) ""))
-    
-
-    ;; ===========================================
-    ;; On page loading 
-    ;; ===========================================
-    (setf ws
-	  (new (|WebSocket|
-		(lisp
-		 (format nil "ws://127.0.0.1:~A~A"
-			 *web-socket-port* *ws-loc*)))))
-    
-    (setf (chain ws onopen)
-	  (lambda ()
-	    ;; cell-pad
-	    (setf cell-pad (chain document (get-element-by-id "cellpad")))
-	    (make-cell)
-	    ;; when notebook-file is given as an argument
-	    (when (lisp notebook-filename)
-	      (load-notebook-file (lisp notebook-filename)))
-	    
-	    ;; add key event ctrl-return to eval the focused ce
-	    (chain ($ document)
-		   (keydown (lambda (event)
-			      (when (and (chain event ctrl-key)
-					 ;; 13 represents "Enter key"
-					 (= (chain event which) 13))
-				(eval-cell-and-go focused-cell "evalk")))))
-
-	    ;; add key event ctrl-s to save notebook
-	    (chain ($ document)
-		   (keydown (lambda (event)
-			      (when (and (chain event ctrl-key)
-					 ;; 83 represents "s"
-					 (= (chain event which) 83))
-				(save-notebook)))))
-	    
-	    ;; Change title value to file name
-	    (change-title)
-	    (console.log "Openning connection to websocket")))
-    
-    ;; When messages reached to the client through web socket
-    (setf (chain ws onmessage)
-	  (lambda (event)
-	    (handle-message (chain event data))))
 
     (defun trim-spaces (element)
       (setf (chain element |innerHTML|)
 	    (chain element |innerHTML| (trim))))
 
-    ;; When the web page is loaded
-    (setf (chain window onload)
-	  (lambda (event)
-	    ;; rename-span is for broadcasting, sort of.
-	    ;; Hence used often
-	    (setf rename-span (chain document (get-element-by-id "rename_span")))
-	    ;; rename span value includes spaces so must be trimmed first
-	    (trim-spaces rename-span)
-	    ;; notebook file name is saved here
-	    (setf rename-save (chain document (get-element-by-id "rename_save")))
-	    (trim-spaces rename-save))))
-  )
+    ;; ===========================================
+    ;; On page loading 
+    ;; ===========================================
+    
+    (defun init ()
+      ;; rename-span is for broadcasting, sort of.
+      ;; Hence used often
+      (setf rename-span (chain document (get-element-by-id "rename_span")))
+      ;; rename span value includes spaces so must be trimmed first
+      (trim-spaces rename-span)
+      (setf rename-span-content (chain rename-span |innerHTML|))
+      
+      ;; set current-package
+      (setf current-package (lisp *default-working-package*))
+      ;; Change title value to file name
+      (change-title)
+
+      ;; add key event ctrl-return to eval the focused ce
+      (chain ($ document)
+	     (keydown (lambda (event)
+			(when (and (chain event ctrl-key)
+				   ;; 13 represents "Enter key"
+				   (= (chain event which) 13))
+			  (eval-cell-and-go focused-cell "evalk")))))
+
+      ;; add key event ctrl-s to save notebook
+      (chain ($ document)
+	     (keydown (lambda (event)
+			(when (and (chain event ctrl-key)
+				   ;; 83 represents "s"
+				   (= (chain event which) 83))
+			  (save-notebook)))))
+      ;; cell-pad
+      (setf cell-pad (chain document (get-element-by-id "cellpad")))
+      (make-cell)
+
+      ;; websocket setup
+      (setf ws (new (|WebSocket|
+		     (lisp
+		      (format nil "ws://127.0.0.1:~A~A"
+			      *web-socket-port* *ws-loc*)))))
+
+      ;; when notebook-file is given as an argument
+      (setf (chain ws onopen)
+	    (lambda ()
+	      (when (lisp notebook-filename)
+		;; loading file requires a websocket opened
+		(load-notebook-file (lisp notebook-filename)))
+	      (chain console (log "Openning connection to websocket"))))
+      
+      (setf (chain ws onmessage)
+	    (lambda (event)
+	      (handle-message (chain event data)))))
+    ;; 
+    (setf (chain window onload) init)))
+
 
 
 ;; page html
 (defparameter *menubutton-size* "40px")
 
 (defun notebook-page (&optional notebook-filename)
-  (let ((untitled (string (gensym "UNTITLED"))))
+  (let ((untitled (string (gensym "untitled"))))
     (with-html-output-to-string  (*standard-output* nil :prologue "<!DOCTYPE html>" :indent t)
       (:html
        :lang "en"
@@ -804,18 +814,22 @@
 	(:div :id "notebook-menu"
 	      :style " background-color: #FFFFFF; overflow:hidden"
 	      (:div :style "height:0px; overflow:hidden"
-		    (:form  :action "/yomi" :method "post"
-			    :enctype "multipart/form-data"
-			    (:input
-			     :type "file" :id "choose-notebook"
-			     :name "yomifile"
-			     :onchange
-			     (ps (chain this form (submit))))
-			    ))
+		    ;; open in new tab
+		    (:form
+		     ;; opening new-tabs can be problematic sometimes
+		     ;; :target "_blank"
+		     :action "/yomi" :method "post"
+		     :enctype "multipart/form-data"
+		     (:input
+		      :type "file" :id "choose-notebook"
+		      :name "yomifile"
+		      :onchange
+		      (ps (chain this form (submit))))))
 	      ;; menu icons	    
 	      (:div :style "display: inline-block"
 		    (:input :type "image" :src "folder.png"
 			    :width *menubutton-size* :height *menubutton-size*
+			    ;; save it just in case
 			    :onclick (ps (save-notebook) (choose-notebook)))
 		    (:input :type "image" :src "notebook.png"
 			    :width *menubutton-size* :height *menubutton-size*
@@ -857,9 +871,6 @@
 	      (:div :id "rename_div"
 		    :style "display:inline-block; position:absolute; right: 0;margin-right:14px"
 		    
-		    (:span :style "display:none;"
-			   :id "rename_save"
-			   (str untitled))
 		    (:span :style "font-size:120%;color:gray;"
 			   :onclick (ps (rename-input-show-up))
 			   :id "rename_span"
@@ -872,14 +883,12 @@
 			    :value untitled
 			    :onkeydown
 			    (ps
-			      (if (= (@ event key-code) 13)
-				  ;; 
-				  (if (= (chain document
-						(get-element-by-id "rename_input") ; feels stupid
-						value (trim))
-					 "")
-				      (alert "Please Enter a Name")
-				      (chain document (get-element-by-id "rename_button") (click))))))
+			      (when (= (@ event key-code) 13)
+				(if (= (chain this value (trim)) "")
+				    (alert "Please Enter a Name")
+				    (chain document
+					   (get-element-by-id "rename_button")
+					   (click))))))
 		  
 		    (:input :type "submit"
 			    :style "display:none;"
@@ -888,8 +897,6 @@
 		  
 		    (:input :type "image" :src "save.png"
 			    :width *menubutton-size* :height *menubutton-size*
-			    :onclick (ps (save-notebook))))
-	      )
-
+			    :onclick (ps (save-notebook)))))
 	(:div :id "cellpad"))))))
 
