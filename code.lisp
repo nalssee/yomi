@@ -4,6 +4,8 @@
   ((codelist :initarg :codelist
 	     :reader codelist)))
 
+;; I believe this is more flexible and intuitive
+;; than providing a macro
 (defun make-code (&rest sexp-codes)
   (make-instance
    'code

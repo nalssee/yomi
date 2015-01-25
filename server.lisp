@@ -454,11 +454,9 @@
   (start (make-instance 'easy-acceptor :port *yomi-server-port*))
   (open-browser *yomi-server-port*))
 
-
 (defun shorten-file-name (file)
   (format nil "/~A.~A" (pathname-name file)
 	  (pathname-type file)))
-
 
 (defun publish-static-content ()
   ;; initialize, may not be necessary.

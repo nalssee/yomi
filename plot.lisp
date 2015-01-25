@@ -7,7 +7,6 @@
    (series-list :initarg :series-list)
    (options :initarg :options)))
 
-
 (defclass series ()
   ((label :initarg :label)
    ;; data: '((1 2) (3 4) ...)
@@ -16,7 +15,6 @@
    (lines :initarg :lines)
    (bars :initarg :bars)
    (color :initarg :color)))
-
 
 (defun plot (&rest xs)
   (let ((series-list (remove-if-not
@@ -74,32 +72,27 @@
 (defun pick-color ()
   (nth (random (length *color-list*)) *color-list*))
 
-
 (defun adjoin-option (key value options)
   (if (assoc key options)
       (progn (rplacd (assoc key options) value)
 	     options)
       (push (cons key value) options)))
 
-
 (defun create (&rest kv-pairs)
   "Remember create from parenscript?"
   (loop for xs on kv-pairs by #'cddr collect
        (cons (first xs) (second xs))))
-
 
 (defun t-nil (x)
   (case x
     ((t nil) (create :show x))
     (otherwise x)))
 
-
 ;; data is a list of numbers
 ;; '(3 2 3 19 2 3 4)
 (defun hist (data &key label (color (pick-color)))
   (series (freq data) :color color
 	  :label label :bars (create :show t :fill-color color) :points nil))
-
 
 (defun freq (data)
   (let ((table (make-hash-table)))
@@ -108,5 +101,3 @@
     (let (result)
       (maphash #'(lambda (k v) (push (list k v) result)) table)
       (sort result #'< :key #'first))))
-
-

@@ -25,4 +25,3 @@
 (defpackage :ynb
   (:use :cl :yomi))
 
-

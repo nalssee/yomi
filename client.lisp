@@ -23,15 +23,11 @@
     ;; cellpad
     ;; cells are going to be appended in this element
     (defvar cell-pad nil)
-    
+
     ;; Show system messages here    
     (defvar rename-span nil)
-    ;; Since rename-span is used for system notifications as well,
-    ;; rename span content and color must be saved to revert it back
-    ;; after notifications
-    (defvar rename-span-content nil)
-    (defvar rename-span-color "Gray")
-    
+    (defvar notice nil)
+        
     ;; How many cells are created
     (defvar cell-counter 0)
     ;; 0 : never been saved with the current file name
@@ -97,9 +93,9 @@
 	;; It is meaninless to evaluate empty cell
 	;; Even if it is the empty cell if it's not the last cell
 	;; it is evaluated for convenience
-	(when (not (and (last-cell-p cell)
-			(= cell-content "")))
-	  (notify "Processing" "orange")
+	(unless (and (last-cell-p cell)
+		     (= (chain cell-content (trim)) ""))
+	  (notify "PROCESSING" "orange")
 	  ;; Message is sent as a JSON string
 	  (chain ws (send (chain +JSON+ (stringify
 					 (make-message
@@ -125,7 +121,7 @@
       (let* ((cells-to-eval (chain all-cells
 				   (slice (cell-position focused-cell))))
 	     (first-cell-position (cell-position focused-cell)))
-	(notify "Processing" "orange")
+	(notify "PROCESSING" "orange")
 	(chain
 	 ws
 	 (send (chain +JSON+ (stringify
@@ -218,12 +214,10 @@
       (let* ((rename-input  (chain document (get-element-by-id "rename_input")))
 	     ;; trimmed rename-input value
 	     (rename-input-value (chain rename-input value (trim))))
-	(unless (= rename-span-content rename-input-value)
+	(unless (= (chain rename-span |innerHTML|) rename-input-value)
 	  (setf ever-been-saved 0)
 	  (setf (chain rename-span |innerHTML|) rename-input-value)
-	  (setf (chain rename-span style color)  "Gray")
-	  (setf rename-span-content rename-input-value)
-	  (setf rename-span-color "Gray"))
+	  (setf (chain rename-span style color)  "Gray"))
 	(setf (chain rename-span style display)  "inline")
 	(setf (chain rename-input style display) "none")))
 
@@ -238,7 +232,7 @@
 			    "saveFileWithCaution"
 			    "saveFile")
 			;; first element of data list is a filename to save
-			(append (list rename-span-content)
+			(append (list (chain rename-span |innerHTML|))
 				(loop for cell in all-cells collect
 				     (chain (getprop cell 'editor) (get-value)))))))))))
     
@@ -267,8 +261,7 @@
     (setf (getprop message-handling-function-set "evaled")
 	  ;; data is a list of evaled-result
 	  (lambda (data)
-	    ;; rename_span message reverted back to notebook name
-	    (revert-rename-span)
+	    (notify "" "")
 	    (let ((first-eval-cell-position (chain (first data) cellno))
 		  (last-eval-cell-position  (chain (last1 data) cellno)))
 	      (loop for d1 in data
@@ -282,7 +275,7 @@
     ;; almost the same as the above except the last part
     (setf (getprop message-handling-function-set "evaledk")
 	  (lambda (data)
-	    (revert-rename-span)
+	    (notify "" "")
 	    (let ((first-eval-cell-position (chain (first data) cellno)))
 	      (loop for d1 in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
@@ -303,21 +296,17 @@
 		   (chain (getprop (make-cell) 'editor)
 			  (get-doc) (set-value exp)))
 	      (setf (chain rename-span |innerHTML|) filename)
-	      (setf rename-span-content filename)
-	      (color-rename-span "green")
+	      (setf (chain rename-span style color) "Green")
 	      (setf (chain document (get-element-by-id "rename_input") value)
 	      	    filename)
-	      (change-title)
-	      
-	      ;; focus back to the first cell and eval-forward
-	      (get-it-focused (first-cell))
-	      (eval-forward))))
+	      (change-title))))
+    
 
     ;; System error handling
     (setf (getprop message-handling-function-set "systemError")
 	  ;; set values to cells
 	  (lambda (data)
-	    (notify-blink "SYSTEM ERROR" "RED")
+	    (notify "SYSTEM ERROR" "RED")
 	    (let ((fc (first-cell)))
 	      (clear-result-area fc)
 	      (setf (chain (getprop fc 'result-area) |innerHTML|) data)
@@ -330,23 +319,16 @@
 		   ;; This message is arrived means that
 		   ;; the file is saved well.
 		   (setf ever-been-saved 1)
-		   (let ((current-message (chain rename-span |innerHTML|)))
-		     (if (or (= current-message "Processing")
-			     (= current-message "Interrupted"))
-			 (setf rename-span-color "green")
-			 (color-rename-span "green")))
+		   (setf (chain rename-span style color) "green")
 		   (change-title))
 		  ((= data "interrupted")
-		   (notify-blink-enforce "Interrupted" "dodgerblue"))
+		   (notify "INTERRUPTED" "dodgerblue"))
 		  ;; set package
 		  ((and (instanceof data |Array|)
 			(= (first data) "set-package"))
 		   (setf current-package (getprop data 1))
-		   (change-title)
-		   (notify-blink
-		    (chain "{0} {1}" (format "set-package" current-package))
-		    "green")))))
-
+		   (change-title)))))
+    
     ;; =========================================================
     ;; Now you need to render results in the result area
     ;; render-result pairs with "build-message-to-send' in server.lisp
@@ -357,7 +339,6 @@
       ((getprop rendering-function-set (@ evaled-result type))
        result-area
        (@ evaled-result value) (@ evaled-result stdout)))
-
     
     ;; Register result rendering functions
     
@@ -370,7 +351,6 @@
 		      value
 		      (chain "{0}<br>{1}" (format stdout value))))))
     
-
     ;; Draw chart using "flot"
     (setf (getprop rendering-function-set "chart")
 	  (lambda (result-area value stdout)
@@ -521,9 +501,12 @@
 	;; Is this too much burden?
 	(chain editor
 	       (on "change"
-		   (lambda () (color-rename-span "gray"))))
-	
-	(color-rename-span "gray")
+		   (lambda ()
+		     (setf (chain rename-span style color) "gray")
+		     (notify "" ""))))
+
+	(setf (chain rename-span style color) "gray")
+	(notify "" "")
 
 	;; Disable ctrl-enter in the editor
 	;; it is going to be used as cell evaluation
@@ -580,12 +563,8 @@
 	     ;; if it is simply the last cell then make a new cell at the end
 	     ;; and focus it to the newly made cell
 	     ;; or else the next cell is focused
-	     (cond ((and (last-cell-p cell)
-			 (empty-cell-p cell))
-
-		    cell)
-		   ((last-cell-p cell)
-		    (make-cell))
+	     (cond ((and (last-cell-p cell) (empty-cell-p cell)) cell)
+		   ((last-cell-p cell) (make-cell))
 		   (t (getprop all-cells (1+ (cell-position cell)))))))
 	(get-it-focused cell-to-focus)))
     
@@ -612,41 +591,11 @@
     (defun auto-scroll ()
       (chain (getprop focused-cell 'div-outer) (scroll-into-view)))
 
-    ;; change colors of rename-span and rename-span-color
-    (defun color-rename-span (color-string)
-      (setf (chain rename-span style color) color-string)
-      (setf rename-span-color color-string))
-
-    ;; Blink rename_span content for a second
-    ;; unless the server is processing the request
-    (defun notify-blink (message color-string)
-      (unless (= (chain rename-span |innerHTML|) "Processing")
-	  (setf (chain rename-span |innerHTML|) message)
-	  (setf (chain rename-span style color) color-string)
-	  (set-timeout (lambda ()
-			 ;; revert it back
-			 (revert-rename-span))
-		       1000)))
-    
-    ;; Blink rename_span no matter what
-    ;; used for "interrupt"
-    (defun notify-blink-enforce (message color-string)
-      (setf (chain rename-span |innerHTML|) message)
-      (setf (chain rename-span style color) color-string)
-      (set-timeout (lambda ()
-		       ;; revert it back
-		     (revert-rename-span))
-		   1000))
-
-    ;; Change rename_span message
+    ;; notify at notice area
     (defun notify (message color-string)
-      (setf (chain rename-span |innerHTML|) message)
-      (setf (chain rename-span style color) color-string))
+      (setf (chain notice |innerHTML|) message)
+      (setf (chain notice style color) color-string))
 
-    (defun revert-rename-span ()
-      (setf (chain rename-span |innerHTML|) rename-span-content)
-      (setf (chain rename-span style color) rename-span-color))
-        
     ;; not a very efficient way but
     ;; I don't want to bother.
     ;; computers are fast enough
@@ -655,8 +604,8 @@
 	 for cell in all-cells do
 	   (setf (chain (getprop cell 'cell-loc-area) |innerHTML|)
 		 (pad (chain i (to-string)) 3)))
-      ;; Notebook ontent is changed
-      (color-rename-span "gray"))
+      (notify "" "")
+      (setf (chain rename-span style color) "Gray"))
 
     ;; ====================================================
     ;; Helpers
@@ -708,7 +657,6 @@
       (if (< (chain str length) max)
 	  (pad (+ "0" str) max)
 	  str))
-
     ;; 
     (defun cutout-extension (filename)
       (let ((splited  (chain filename (split "."))))
@@ -720,14 +668,10 @@
     (defun change-title ()
       (let ((title-element (chain document (get-element-by-id "title"))))
 	(setf (chain title-element |innerHTML|)
-	      (+ current-package " " rename-span-content))))
+	      (+ current-package " " (chain rename-span |innerHTML|)))))
 
     (defun clear-result-area (result-area)
       (setf (chain result-area |innerHTML|) ""))
-
-    (defun trim-spaces (element)
-      (setf (chain element |innerHTML|)
-	    (chain element |innerHTML| (trim))))
 
     ;; ===========================================
     ;; On page loading 
@@ -738,8 +682,10 @@
       ;; Hence used often
       (setf rename-span (chain document (get-element-by-id "rename_span")))
       ;; rename span value includes spaces so must be trimmed first
-      (trim-spaces rename-span)
-      (setf rename-span-content (chain rename-span |innerHTML|))
+      (setf (chain rename-span |innerHTML|)
+	    (chain rename-span |innerHTML| (trim)))
+
+      (setf notice (chain document (get-element-by-id "notice")))
       
       ;; set current-package
       (setf current-package (lisp *default-working-package*))
@@ -870,8 +816,13 @@
 	    
 	      (:div :id "rename_div"
 		    :style "display:inline-block; position:absolute; right: 0;margin-right:14px"
-		    
-		    (:span :style "font-size:120%;color:gray;"
+
+		    (:span :style "font-size:100%;color:gray;"
+			   :id "notice"
+			   ""
+			   )
+		    ;; show system messages here
+		    (:span :style "font-size:100%;color:gray;"
 			   :onclick (ps (rename-input-show-up))
 			   :id "rename_span"
 			   (str untitled))
