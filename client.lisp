@@ -503,10 +503,12 @@
 	       (on "change"
 		   (lambda ()
 		     (setf (chain rename-span style color) "gray")
-		     (notify "" ""))))
+		     (unless (keep-notice-condition)
+		       (notify "" "")))))
 
 	(setf (chain rename-span style color) "gray")
-	(notify "" "")
+	(unless (keep-notice-condition)
+	  (notify "" ""))
 
 	;; Disable ctrl-enter in the editor
 	;; it is going to be used as cell evaluation
@@ -596,6 +598,9 @@
       (setf (chain notice |innerHTML|) message)
       (setf (chain notice style color) color-string))
 
+    (defun keep-notice-condition ()
+      (= (chain notice |innerHTML|) "PROCESSING"))
+    
     ;; not a very efficient way but
     ;; I don't want to bother.
     ;; computers are fast enough
@@ -604,8 +609,9 @@
 	 for cell in all-cells do
 	   (setf (chain (getprop cell 'cell-loc-area) |innerHTML|)
 		 (pad (chain i (to-string)) 3)))
-      (notify "" "")
-      (setf (chain rename-span style color) "Gray"))
+      (setf (chain rename-span style color) "Gray")
+      (unless (keep-notice-condition)
+	(notify "" "")))
 
     ;; ====================================================
     ;; Helpers
