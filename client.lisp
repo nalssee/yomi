@@ -469,7 +469,7 @@
 	    ;; hide text area and cell-loc-area
 	    (setf (chain (getprop cell 'editor) (get-wrapper-element)
 			 style display) "none")
-	    (setf (chain (getprop cell 'cell-loc-area) style display) "none")
+	    (setf (chain (getprop cell 'cell-loc-area) style visibility) "hidden")
 	    (setf (chain result-area |innerHTML|) value)))
     
     ;; ====================================================
@@ -579,7 +579,7 @@
 	  (let ((textarea-recovered (chain editor (get-wrapper-element))))
 	    (setf (chain div-outer ondblclick)
 		  (lambda ()
-		    (setf (chain cell-loc-area style display) "")
+		    (setf (chain cell-loc-area style visibility) "")
 		    (setf (chain textarea-recovered style display) ""))))
 	  ;; finally return the cell
 	  cell)))
