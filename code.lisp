@@ -118,7 +118,7 @@
 
    "##rawtext
 <h2>SET-PACKAGE</h2>
-Notice that the title is changed"
+Page title indicates current package"
    '(progn
      (ql:quickload "alexandria")
      (defpackage :foo
