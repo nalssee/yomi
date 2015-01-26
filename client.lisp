@@ -322,10 +322,12 @@
 	  ;; set values to cells
 	  (lambda (data)
 	    (notify "SYSTEM ERROR" "RED")
-	    (let ((fc (first-cell)))
-	      (clear-result-area fc)
-	      (setf (chain (getprop fc 'result-area) |innerHTML|) data)
-	      (get-it-focused fc))))
+	    (let ((cell (make-cell (last-cell))))
+	      (setf (chain (getprop cell 'result-area) |innerHTML|) data)
+	      (setf (chain (getprop cell 'editor)
+			   (get-wrapper-element) style display) "none")
+	      (setf (chain (getprop cell 'cell-loc-area) style display) "none")
+	      (get-it-focused cell))))
     
     ;; System messages like "saved" or "interrupted" 
     (setf (getprop message-handling-function-set "systemMessage")
