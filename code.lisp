@@ -60,7 +60,7 @@
    '(format t "Standard~%    Output")
    '(intentional error)
    "##rawtext
-    <h1>Plot Examples</h1>"
+<h2>Plot Examples</h2>"
    '(plot (series '((-2 2) (3 4) (5 -2) (8 0))))
    ;; 
    '(progn
@@ -92,7 +92,7 @@
 	     :title "Binary Distribution"
 	     :xlabel "n of front")))
    "##rawtext
-    <h4>Multiple results (not necessarily plots)</h4>"
+<h2>Multiple Results (not necessarily plots)</h2>"
    '(progn
      (defun samplot (width height radius &optional (point-shape "circle"))
        (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t
@@ -117,8 +117,8 @@
       (hpack (p1 0.7) (p1 0.8) (p1 1.1))))
 
    "##rawtext
-   <h4>You can define packages and set it as a default package.</h4>
-Also notice that the title is changed"
+<h2>SET-PACKAGE</h2>
+Notice that the title is changed"
    '(progn
      (ql:quickload "alexandria")
      (defpackage :foo
@@ -131,7 +131,8 @@ set-package must be evaluated in a different cell."
    "##rawtext Set it back to ynb"
    '(set-package :ynb)
 
-   "##rawtext Now \"flatten\" can't be used directly anymore,
+   "##rawtext
+Now \"flatten\" can't be used directly anymore,
 so you will see an error"
    '(flatten '((3) 4))
    ))
