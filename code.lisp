@@ -56,11 +56,13 @@
 ;; 
 (defun demo ()
   (make-code
+   "##rawtext
+<h2><font color='dodgerblue'>Simple Expressions</font></h2>"
    '(+ 3 4)
    '(format t "Standard~%    Output")
    '(intentional error)
    "##rawtext
-<h2>Plot Examples</h2>"
+<h2><font color='dodgerblue'>Plot Examples</font></h2>"
    '(plot (series '((-2 2) (3 4) (5 -2) (8 0))))
    ;; 
    '(progn
@@ -92,7 +94,7 @@
 	     :title "Binary Distribution"
 	     :xlabel "n of front")))
    "##rawtext
-<h2>Multiple Results (not necessarily plots)</h2>"
+<h2><font color='dodgerblue'>Multiple Results (not necessarily plots)</font></h2>"
    '(progn
      (defun samplot (width height radius &optional (point-shape "circle"))
        (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t
@@ -117,7 +119,7 @@
       (hpack (p1 0.7) (p1 0.8) (p1 1.1))))
 
    "##rawtext
-<h2>SET-PACKAGE</h2>
+<h2><font color='dodgerblue'>SET-PACKAGE</font></h2>
 Page title indicates current package"
    '(progn
      (ql:quickload "alexandria")
