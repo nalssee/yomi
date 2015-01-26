@@ -120,21 +120,19 @@
 
    "##rawtext
 <h2><font color='dodgerblue'>SET-PACKAGE</font></h2>
-Page title indicates current package"
+<font color='orange'>A page title indicates a current package.</font>"
    '(progn
      (ql:quickload "alexandria")
      (defpackage :foo
        (:use :cl :yomi :alexandria))
      (set-package :foo))
    "##rawtext
-Once \"foo\" is defined you can use it
-set-package must be evaluated in a different cell."
+<font color='orange'>Now that a current package is set to \"foo\",</font>"
    '(flatten '((3) 4 ((5 (6)) 7)))
-   "##rawtext Set it back to ynb"
+   "##rawtext <font color=\"orange\">Set it back to \"YNB\". </font>"
    '(set-package :ynb)
 
    "##rawtext
-Now \"flatten\" can't be used directly anymore,
-so you will see an error"
+<font color='orange'>You should see an error now.</font>"
    '(flatten '((3) 4))
    ))

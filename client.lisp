@@ -415,9 +415,7 @@
 		  (focus-to-next-cell first-cell)
 		  (eval-forward))
 		(setf (chain result-area |innerHTML|)
-		      (chain "{0}<br>&nbsp; &nbsp; {1}"
-			     (format "Unless this is the focused last cell,"
-				     "cell generation expression is ignored."))))))
+		      "<font color='dodgerblue'>This expression must be evaluated as a focused last cell.</font>"))))
     
     ;; Render error message
     (setf (getprop rendering-function-set "error")
