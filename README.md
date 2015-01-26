@@ -7,8 +7,8 @@
 - CL: SBCL, CCL (must support threads)
 - Web browsers: Recent ones (must support web socket)
 
-## (Direct) Dependencies 
-- cl-who, hunchentoot, clws, parenscript, cl-json, inferior-shell, cl-fad, bordeaux-threads, usocket
+## Dependencies 
+- cl-who, hunchentoot, clws, parenscript, cl-json, inferior-shell, cl-fad, bordeaux-threads, usocket, cl-ppcre
 
 
 ## Installation && Quick start

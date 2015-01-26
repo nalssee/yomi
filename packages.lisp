@@ -11,8 +11,8 @@
    :plot
    :series
    :hist
-   :packv
-   :packh
+   :vpack
+   :hpack
    ;; for flot option creation.
    :create
 

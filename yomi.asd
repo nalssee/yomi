@@ -10,7 +10,8 @@
 
 	       :parenscript
 	       :cl-who
-	       :cl-json)
+	       :cl-json
+	       :cl-ppcre)
   :serial t
   :components ((:file "packages")
 	       (:file "parameters")

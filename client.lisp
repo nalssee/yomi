@@ -278,7 +278,10 @@
 		  (last-eval-cell-position  (chain (last1 data) cellno)))
 	      (loop for d1 in data
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
-		   (render-result (getprop cell 'result-area) d1))
+		 ;; result area can be broken into pieces (vpack, hpack)
+		 ;; and sometimes you may want to modify cell elements
+		 ;; other than its result-area
+		   (render-result cell (getprop cell 'result-area) d1))
 	      (focus-to-next-cell (getprop all-cells last-eval-cell-position))
 	      (auto-scroll))))
     
@@ -291,7 +294,7 @@
 	    (let ((first-eval-cell-position (chain (first data) cellno)))
 	      (loop for d1 in data 
 		 for cell in (chain all-cells (slice first-eval-cell-position)) do
-		   (render-result (getprop cell 'result-area) d1))
+		   (render-result cell (getprop cell 'result-area) d1))
 	      ;; focus-to-next-cell is not invoked here
 	      )))
     
@@ -347,16 +350,16 @@
     ;; =========================================================
     ;; don't worry about cell focusing here
     ;; resul-area is a div elementp
-    (defun render-result (result-area evaled-result)
+    (defun render-result (cell result-area evaled-result)
       ((getprop rendering-function-set (@ evaled-result type))
-       result-area
+       cell result-area
        (@ evaled-result value) (@ evaled-result stdout)))
     
     ;; Register result rendering functions
     
     ;; Text rendering
     (setf (getprop rendering-function-set "text")
-	  (lambda (result-area value stdout)
+	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
 	    (setf (chain result-area |innerHTML|)
 		  (if (= stdout "")
@@ -365,7 +368,7 @@
     
     ;; Draw chart using "flot"
     (setf (getprop rendering-function-set "chart")
-	  (lambda (result-area value stdout)
+	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
 	    ;; write standard output if exists	
 	    (unless (= stdout null)
@@ -374,7 +377,7 @@
 		;; no need for style setup
 		(chain result-area (append-child p))
 		(setf (chain p |innerHTML|) stdout)))
-	    
+
 	    (let ((inner-div (chain document (create-element "div"))))
 	      (chain result-area (append-child inner-div))
 	      ;; set size of the pane
@@ -401,7 +404,7 @@
     ;; refer to "defcode" macro in summary.lisp
     (setf (getprop rendering-function-set "code")
 	  ;; stdout is ignored
-	  (lambda (result-area value stdout)
+	  (lambda (cell result-area value stdout)
 	    (if (last-cell-p focused-cell)
 		(let ((first-cell focused-cell))
 		  (loop for v1 in value do
@@ -416,7 +419,7 @@
     
     ;; Render error message
     (setf (getprop rendering-function-set "error")
-	  (lambda (result-area value stdout)
+	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
 	    (setf (chain result-area |innerHTML|) value)))
 
@@ -428,8 +431,8 @@
     ;; Horizontal overflow scrolling failed,
     ;; try it later.
     ;; I haven't figured out yet which one is better.
-    (setf (getprop rendering-function-set "packv")
-	  (lambda (result-area value stdout)
+    (setf (getprop rendering-function-set "vpack")
+	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
 	    ;; render standard output first
 	    (unless (= stdout "")
@@ -439,11 +442,10 @@
 	    (loop for v1 in value do
 		 (let ((div (chain document (create-element "div"))))
 		   (chain result-area (append-child div))
-		   (render-result div v1)))))
+		   (render-result cell div v1)))))
     
-
-    (setf (getprop rendering-function-set "packh")
-	  (lambda (result-area value stdout)
+    (setf (getprop rendering-function-set "hpack")
+	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
 	    ;; render standard output first
 	    (unless (= stdout "")
@@ -455,8 +457,19 @@
 		   (chain result-area (append-child div))
 		   ;; <--
 		   (setf (chain div style display) "inline-block")
-		   (render-result div h1)))))  
+		   (render-result cell div h1)))))
 
+    ;; if editor content starts with ##rawtext the rest is just considered
+    ;; as a simple string
+    (setf (getprop rendering-function-set "##rawtext")
+	  (lambda (cell result-area value stdout)
+	    (clear-result-area result-area stdout)
+	    ;; hide text area and cell-loc-area
+	    (setf (chain (getprop cell 'editor) (get-wrapper-element)
+			 style display) "none")
+	    (setf (chain (getprop cell 'cell-loc-area) style display) "none")
+	    (setf (chain result-area |innerHTML|) value)))
+    
     ;; ====================================================
     ;; Make cell
     ;; ====================================================
@@ -475,9 +488,7 @@
 	    ;; at the left of the textarea cell number is shown for convenience
 	    (cell-loc-area (chain document (create-element "div"))))
 
-	;; I think the following some lines must go to css file
-	;; But I will just leave it be for this experiental phase.
-	
+	(setf (chain div-outer class-name) "cell-div-outer")
 	(setf (chain div-main class-name) "cell-div-main")
 	(setf (chain cell-loc-area class-name) "cell-loc-area")
 	;; place holder
@@ -520,9 +531,9 @@
 		       (notify "" "")))))
 
 	(setf (chain rename-span style color) "gray")
+	
 	(unless (processing-p)
 	  (notify "" ""))
-
 	;; Disable ctrl-enter in the editor
 	;; it is going to be used as cell evaluation
 	;; if you don't include the following expression
@@ -544,7 +555,6 @@
 			    result-area resultarea
 			    editor editor
 			    cell-loc-area cell-loc-area)))
-	  
 	  ;; increase cell-counter by 1
 	  (incf cell-counter)
 	  ;; the cell just made gets focused
@@ -563,10 +573,14 @@
 	  ;; when div-outer is clicked the cell is focused
 	  (setf (chain div-outer onclick)
 		(lambda () (get-it-focused cell)))
-	  
+	  ;; double click shows up text area if it's not shown.
+	  (let ((textarea-recovered (chain editor (get-wrapper-element))))
+	    (setf (chain div-outer ondblclick)
+		  (lambda ()
+		    (setf (chain cell-loc-area style display) "")
+		    (setf (chain textarea-recovered style display) ""))))
 	  ;; finally return the cell
 	  cell)))
-
 
     ;; ====================================================
     ;; misc.
@@ -835,14 +849,14 @@
 			  (:input :type "image" :src "undo.png"
 				  :width *menubutton-size* :height *menubutton-size*
 				  :onclick (ps (undo)))))
+	      "&nbsp; &nbsp; &nbsp; &nbsp; "
+	      (:span  :id "notice"
+		      :style "font-size:100%;color:gray;" "")
 	    
 	      (:div :id "rename_div"
 		    :style "display:inline-block; position:absolute; right: 0;margin-right:14px"
 
-		    (:span :style "font-size:100%;color:gray;"
-			   :id "notice"
-			   ""
-			   )
+		    
 		    ;; show system messages here
 		    (:span :style "font-size:100%;color:gray;"
 			   :onclick (ps (rename-input-show-up))

@@ -31,10 +31,12 @@
    :codelist (mapcan #'codelist codes)))
 
 (defun code->string (code)
-  (if (and (listp code) (eql (first code) 'progn))
-      ;; progn is stripped off
-      (format nil "~{~S~^~%~}" (peel-package-name (rest code)))
-      (format nil "~S" (peel-package-name code))))
+  (cond ((stringp code) code)
+	((and (listp code) (eql (first code) 'progn))
+	 ;; progn is stripped off
+	 (format nil "~{~S~^~%~}" (peel-package-name (rest code))))
+	(t (format nil "~S" (peel-package-name code)))))
+
 
 ;; todo 
 ;; a bit heavy 
@@ -57,6 +59,8 @@
    '(+ 3 4)
    '(format t "Standard~%    Output")
    '(intentional error)
+   "##rawtext
+    <h1>Plot Examples</h1>"
    '(plot (series '((-2 2) (3 4) (5 -2) (8 0))))
    ;; 
    '(progn
@@ -87,7 +91,8 @@
 	     :width 700 :height 300
 	     :title "Binary Distribution"
 	     :xlabel "n of front")))
-   
+   "##rawtext
+    <h4>Multiple results (not necessarily plots)</h4>"
    '(progn
      (defun samplot (width height radius &optional (point-shape "circle"))
        (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t
@@ -95,7 +100,7 @@
 	     :width width :height height :title point-shape))
        
      (format  t "Packing Exmaple")
-     (packv (packh (packv (samplot 300 100 8 "cross")
+     (vpack (hpack (vpack (samplot 300 100 8 "cross")
 			  (samplot 300 100 8 "diamond"))
 	     (samplot 180 238 10 "triangle")
 	     (samplot 200 238 10 "square"))
@@ -108,24 +113,25 @@
 		     :lines t)
 	     :width 150 :height 150 :yrange '(-1 1)
 	     :xrange '(-1 1)))
-     (packv (packh (p1 0.2) (p1 0.3) (p1 0.6))
-      (packh (p1 0.7) (p1 0.8) (p1 1.1))))
-  
+     (vpack (hpack (p1 0.2) (p1 0.3) (p1 0.6))
+      (hpack (p1 0.7) (p1 0.8) (p1 1.1))))
+
+   "##rawtext
+   <h4>You can define packages and set it as a default package.</h4>
+Also notice that the title is changed"
    '(progn
      (ql:quickload "alexandria")
      (defpackage :foo
        (:use :cl :yomi :alexandria))
-     (set-package :foo)
-     "You can use functions in alexandria package once this cell is evaluated")
-     
+     (set-package :foo))
+   "##rawtext
+Once \"foo\" is defined you can use it
+set-package must be evaluated in a different cell."
    '(flatten '((3) 4 ((5 (6)) 7)))
+   "##rawtext Set it back to ynb"
+   '(set-package :ynb)
 
-   '(progn
-     "Set it back to ynb"
-     (set-package :ynb))
-
-   '(progn
-     "And flatten can't be used directly anymore"
-     "So you will see an error message"
-     (flatten '((3) 4)))
+   "##rawtext Now \"flatten\" can't be used directly anymore,
+so you will see an error"
+   '(flatten '((3) 4))
    ))

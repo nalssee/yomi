@@ -111,12 +111,12 @@
 ;; Sometimes you may want to render multiple results
 ;; in a single result area
 ;; vertical pack
-;; e. type : packv
+;; e. type : vpack
 ;;    value: a list of instances of evaled-result
 ;;           (recursive, cellno is not necessary)
 
 ;; horizontal pack
-;; f. type : packh (horizontal pack)
+;; f. type : hpack (horizontal pack)
 ;;    value: a list of instances of evaled-result
 ;;           (recursive, cellno is not necessary)
 
@@ -292,40 +292,52 @@
 		 :stdout stdout))
 
 
-(defclass packv ()
+(defclass vpack ()
   ((elts :initarg :elts
 	 :reader pack-elts)))
 
-(defclass packh ()
+(defclass hpack ()
   ((elts :initarg :elts
 	 :reader pack-elts)))
 
-(defun packv (&rest elts)
+(defun vpack (&rest elts)
   (make-instance
-   'packv :elts elts))
+   'vpack :elts elts))
 
-(defun packh (&rest elts)
+(defun hpack (&rest elts)
   (make-instance
-   'packh :elts elts))
+   'hpack :elts elts))
 
 (defun packup (elts)
   (loop for elt in elts collect
        ;; cell no and stdout is meaningless here
        (make-evaled-result elt "" nil)))
 
-(defmethod make-evaled-result ((result packv) stdout cell-no)
+(defmethod make-evaled-result ((result vpack) stdout cell-no)
   (make-instance 'evaled-result
 		 :cellno cell-no
-		 :type "packv"
+		 :type "vpack"
 		 :value (packup (pack-elts result))
 		 :stdout stdout))
 
-(defmethod make-evaled-result ((result packh) stdout cell-no)
+(defmethod make-evaled-result ((result hpack) stdout cell-no)
   (make-instance 'evaled-result
 		 :cellno cell-no
-		 :type "packh"
+		 :type "hpack"
 		 :value (packup (pack-elts result))
 		 :stdout stdout))
+
+(defclass rawtext ()
+  ((content :initarg :content :reader content)))
+
+(defmethod make-evaled-result ((result rawtext) stdout cell-no)
+  ;; what stanard output?
+  (declare (ignore stdout))
+  (make-instance 'evaled-result
+		 :cellno cell-no
+		 :type "##rawtext"
+		 :value (content result)
+		 :stdout "")) 
 
 ;; all the rest
 (defmethod make-evaled-result ((result t) stdout cell-no)
@@ -335,20 +347,36 @@
 		 :value (format nil "~A" result)
 		 :stdout stdout))
 
-
 (defun eval-with-prelude (str)
   (let (result)
-    #+SBCL
-    (EVAL-WHEN (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
-      (SETQ *PACKAGE*
-	    (SB-INT:FIND-UNDELETED-PACKAGE-OR-LOSE *DEFAULT-WORKING-PACKAGE*)))
-    #+CCL
-    (EVAL-WHEN (:EXECUTE :LOAD-TOPLEVEL :COMPILE-TOPLEVEL)
-      (CCL::SET-PACKAGE *DEFAULT-WORKING-PACKAGE*))
+    (multiple-value-bind (cell-type rest) (detect-cell-type str)
+      (cond ((string= cell-type "##rawtext")
+	     (setf result (make-instance 'rawtext :content rest)))
+	    ;; more cell-types? 
+	    (t
+	     #+SBCL
+	     (EVAL-WHEN (:COMPILE-TOPLEVEL :LOAD-TOPLEVEL :EXECUTE)
+	       (SETQ *PACKAGE*
+		     (SB-INT:FIND-UNDELETED-PACKAGE-OR-LOSE *DEFAULT-WORKING-PACKAGE*)))
+	     #+CCL
+	     (EVAL-WHEN (:EXECUTE :LOAD-TOPLEVEL :COMPILE-TOPLEVEL)
+	       (CCL::SET-PACKAGE *DEFAULT-WORKING-PACKAGE*))
 
-    (setf result (eval (read-from-string (format nil "(progn ~A)" str))))
-    (in-package :yomi)
+	     (setf result (eval (read-from-string (format nil "(progn ~A)" str))))
+	     (in-package :yomi))))
     result))
+
+(defun detect-cell-type (str)
+  "cell type is defined at the beginning of the string with prefixed with
+   two sharps and followed by alphabets like ##rawtext, spaces are left trimmed "
+  (let ((str (string-left-trim '(#\space #\newline #\tab) str)))
+    (multiple-value-bind (a b)
+	(ppcre:scan "##[A-Za-z]+" str)
+      (if (eql a 0)
+	  (values (subseq str a b)
+		  (string-left-trim '(#\space #\newline #\tab)
+				    (subseq str b)))
+	  (values "" "")))))
 
 ;; ===================================================
 ;; Websocket
@@ -385,7 +413,6 @@
        "systemError"
        (format nil "SYSTEM ERROR: ~A" c)))))
 
-
 (defun send-message (client command data)
   (write-to-client-text
    client
@@ -401,12 +428,7 @@
 ;; ======================================================
 ;; Run hunchentoot server
 ;; ======================================================
-(defun start-yomi (&key
-		     (working-directory
-		      (fad:pathname-as-directory
-		       *default-pathname-defaults*))
-		     (max-eval-threads *max-eval-threads*))
-
+(defun start-yomi ()
   ;; server preparation
   ;; If server is already running
   (when *server-running-p*
@@ -414,26 +436,6 @@
 	    *yomi-server-port*)
     (return-from start-yomi))
   
-  ;; Permission is not checked.
-  ;; Maybe later
-  (unless (directory-exists-p working-directory)
-    (format t "~%No such directory in the system: ~A" working-directory)
-    (format t "~%Exiting...")
-    (return-from start-yomi))
-  
-  (setf *working-directory* working-directory)
-
-  ;; I have no idea of "how many threads" is too many but
-  ;; 100 seems to me too many.
-  (unless (and (integerp max-eval-threads)
-	       (> max-eval-threads 1)
-	       (< max-eval-threads 100))
-    (format t "~%max-eval-threads must be an integer from 2 to 99")
-    (format t "~%Exiting...")
-    (return-from start-yomi))
-
-  (setf *max-eval-threads* max-eval-threads)
-
   ;; All set now
   (setf *server-running-p* t)
 

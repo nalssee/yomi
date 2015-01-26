@@ -15,6 +15,11 @@ body {
     overflow: hidden;
 }
 
+.cell-div-outer {
+    padding : 3px 3px 3px 3px;
+
+}
+
 .cell-div-main {
     border-style : solid;
     border-radius: 0.5em;
