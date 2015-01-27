@@ -7,8 +7,7 @@
 
 (defparameter *server-running-p* nil)
    
-(defparameter *working-directory*
-  (merge-pathnames-as-directory (user-homedir-pathname) #p"Desktop/"))
+(defparameter *working-directory* *default-pathname-defaults*)
 
 (defvar *notebook-clients* nil)
 
