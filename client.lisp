@@ -23,6 +23,8 @@
     ;; cellpad
     ;; cells are going to be appended in this element
     (defvar cell-pad nil)
+    ;; cell-pad-top-position is used in auto-scroll
+    (defvar cell-pad-top-position nil)
 
     ;; Show system messages here    
     (defvar rename-span nil)
@@ -35,7 +37,7 @@
     (defvar ever-been-saved 0)
 
     (defvar current-package nil)
-    
+
     ;; for future easy extension
     ;; Idea adopted from data directed programming in SICP
     (defvar message-handling-function-set (create))
@@ -94,10 +96,10 @@
     (defun eval-cell-and-go (cell &optional (command "eval"))
       (unless (processing-p)
 	(let ((cell-content (chain (getprop cell 'editor) (get-value)))
-	      (cell-no (cell-position cell)))
+	      (cell-no (getprop cell 'no)))
 	  ;; It is meaninless to evaluate empty cell
 	  ;; Even if it is the empty cell if it's not the last cell
-	  ;; it is evaluated for convenience
+	  ;; it is evaluated for convenince
 	  (unless (and (last-cell-p cell)
 		       (= (chain cell-content (trim)) ""))
 	    (notify "PROCESSING" "orange")
@@ -123,20 +125,22 @@
     ;; Eval all cells from the focused cell
     ;; Caution: Not all cells, all cells from the focused cell.
     (defun eval-forward ()
-      (unless (processing-p)
-	(let* ((cells-to-eval (chain all-cells
-				     (slice (cell-position focused-cell))))
-	       (first-cell-position (cell-position focused-cell)))
-	  (notify "PROCESSING" "orange")
-	  (chain
-	   ws
-	   (send (chain +JSON+ (stringify
-				(make-message
-				 "eval"
-				 (loop for c in cells-to-eval
-				    for i from first-cell-position collect
-				      (array i (chain (getprop c 'editor) (get-value))))))))))))
+      (eval-cells (chain all-cells
+			 (slice (cell-position focused-cell)))))
     
+    ;; 
+    (defun eval-cells (cells)
+      (unless (processing-p)
+	(notify "PROCESSING" "orange")
+	(chain
+	 ws
+	 (send (chain +JSON+ (stringify
+			      (make-message
+			       "eval"
+			       (loop for c in cells collect
+				    (array (getprop c 'no)
+					   (chain (getprop c 'editor) (get-value)))))))))))
+        
     (defun move-up ()
       (unless (processing-p)
 	(let ((n (cell-position focused-cell)))
@@ -174,7 +178,6 @@
     (defun add-cell ()
       (unless (processing-p)
 	(make-cell focused-cell)))
-    
     
     ;; Remove a focused-cell and focus goes up
     ;; if there's only one cell do nothing
@@ -273,17 +276,19 @@
     (setf (getprop message-handling-function-set "evaled")
 	  ;; data is a list of evaled-result
 	  (lambda (data)
+	    ;; Maybe I am consuming this thawing potion too early.
 	    (notify "" "")
-	    (let ((first-eval-cell-position (chain (first data) cellno))
-		  (last-eval-cell-position  (chain (last1 data) cellno)))
+	    (let ((cells-to-render (search-cells-to-render
+				    (mapcar (lambda (d1) (@ d1 cellno)) data))))
 	      (loop for d1 in data
-		 for cell in (chain all-cells (slice first-eval-cell-position)) do
+		 for cell in cells-to-render do
 		 ;; result area can be broken into pieces (vpack, hpack)
 		 ;; and sometimes you may want to modify cell elements
 		 ;; other than its result-area
 		   (render-result cell (getprop cell 'result-area) d1))
-	      (focus-to-next-cell (getprop all-cells last-eval-cell-position))
-	      (auto-scroll))))
+	      (focus-to-next-cell (last1 cells-to-render))
+	      (auto-scroll)
+	      )))
     
     ;; evaluation message is send by keyboard shortcut (Ctrl-Enter)
     ;; the following function handles the message from the action
@@ -291,9 +296,10 @@
     (setf (getprop message-handling-function-set "evaledk")
 	  (lambda (data)
 	    (notify "" "")
-	    (let ((first-eval-cell-position (chain (first data) cellno)))
-	      (loop for d1 in data 
-		 for cell in (chain all-cells (slice first-eval-cell-position)) do
+	    (let ((cells-to-render (search-cells-to-render
+				    (mapcar (lambda (d1) (@ d1 cellno)) data))))
+	      (loop for d1 in data
+		 for cell in cells-to-render do
 		   (render-result cell (getprop cell 'result-area) d1))
 	      ;; focus-to-next-cell is not invoked here
 	      )))
@@ -306,8 +312,8 @@
 		  (data (getprop data 1)))
 	      ;; first cell is made at the page loading
 	      ;; hence no need for make-cell
-	      (chain (getprop (first-cell) 'editor) (get-doc) (set-value (getprop data 0)))
-	      (loop for exp in (chain data (slice 1)) do
+	      (chain (getprop (first-cell) 'editor) (get-doc) (set-value (first data)))
+	      (loop for exp in (rest data) do
 		   (chain (getprop (make-cell) 'editor)
 			  (get-doc) (set-value exp)))
 	      (setf (chain rename-span |innerHTML|) filename)
@@ -316,7 +322,6 @@
 	      	    filename)
 	      (change-title))))
     
-
     ;; System error handling
     (setf (getprop message-handling-function-set "systemError")
 	  ;; set values to cells
@@ -326,7 +331,7 @@
 	      (setf (chain (getprop cell 'result-area) |innerHTML|) data)
 	      (setf (chain (getprop cell 'editor)
 			   (get-wrapper-element) style display) "none")
-	      (setf (chain (getprop cell 'cell-loc-area) style display) "none")
+	      (setf (chain (getprop cell 'cell-loc-area) style visibility) "hidden")
 	      (get-it-focused cell))))
     
     ;; System messages like "saved" or "interrupted" 
@@ -407,15 +412,16 @@
     (setf (getprop rendering-function-set "code")
 	  ;; stdout is ignored
 	  (lambda (cell result-area value stdout)
-	    (if (last-cell-p focused-cell)
-		(let ((first-cell focused-cell))
-		  (loop for v1 in value do
-		       (let ((c1 (make-cell focused-cell)))
-			 (chain (getprop c1 'editor) (get-doc) (set-value v1))))
-		  (focus-to-next-cell first-cell)
-		  (eval-forward))
-		(setf (chain result-area |innerHTML|)
-		      "<font color='dodgerblue'>This expression must be evaluated as a focused last cell.</font>"))))
+	    (get-it-focused cell)
+	    ;; code generation expression itself is overwritten.
+	    ;; I've given a lot of thought into it
+	    (chain (getprop cell 'editor) (get-doc) (set-value (first value)))
+	    (loop for v1 in (rest value) do
+		 (let ((c1 (make-cell focused-cell)))
+		   (chain (getprop c1 'editor) (get-doc) (set-value v1))))
+	    ;; Do not evaluate generated cells
+	    ;; It's flawed in some ways.
+	    ))
     
     ;; Render error message
     (setf (getprop rendering-function-set "error")
@@ -543,13 +549,8 @@
 		       (create "Ctrl-Enter"
 			       (lambda (cm)))))
 
-	;; Set id to div-outer for later use
-	(defvar cell-id (+ "cell" cell-counter))
-	(setf (chain div-outer id) cell-id)
-	
 	;; Just include them all for convenience
 	(let ((cell (create no cell-counter
-			    id cell-id
 			    div-outer div-outer
 			    div-main div-main
 			    result-area resultarea
@@ -585,6 +586,10 @@
     ;; ====================================================
     ;; misc.
     ;; ====================================================
+    (defun search-cells-to-render (cellnos)
+      (loop for cell in all-cells when (member (getprop cell 'no) cellnos)
+	 collect cell))
+
     (defun focus-to-next-cell (cell)
       (let ((cell-to-focus
 	     ;; if the given cell is the last cell and the content is empty
@@ -616,11 +621,20 @@
       (setf focused-cell cell)
       (turn-on-border cell))
 
-    ;; scroll to focused element to show up
+
     (defun auto-scroll ()
-      (chain (getprop focused-cell 'div-outer) (scroll-into-view)))
+      (let* ((div (getprop focused-cell 'div-outer))
+	     (divp (chain div (get-bounding-client-rect))))
+	;; unless the focused-cell is not in view
+	(unless (and (>= (@ divp top) cell-pad-top-position)
+		     (<= (@ divp bottom) (chain ($ document) (height))))
+	  (chain div (scroll-into-view)))))
 
     ;; notify at notice area
+    ;; (notify "" "") is a thawing potion.
+    ;; If the content of notice element is "PROCESSING",
+    ;; most of the user actions are prohibitted.
+    ;; see processing-p 
     (defun notify (message color-string)
       (setf (chain notice |innerHTML|) message)
       (setf (chain notice style color) color-string))
@@ -742,8 +756,9 @@
 			  (save-notebook)))))
       ;; cell-pad
       (setf cell-pad (chain document (get-element-by-id "cellpad")))
-      (make-cell)
-
+      (let ((cell (make-cell)))
+	(setf cell-pad-top-position (chain (getprop cell 'div-outer) offset-top)))
+      
       ;; websocket setup
       (setf ws (new (|WebSocket|
 		     (lisp
