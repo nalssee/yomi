@@ -291,7 +291,6 @@
 		 :value (codelist result)
 		 :stdout stdout))
 
-
 (defclass vpack ()
   ((elts :initarg :elts
 	 :reader pack-elts)))
@@ -493,10 +492,8 @@
   ;; haven't tested yet
   (inferior-shell:run
    `(start ,(format nil "http://localhost:~A/yomi" port)))
-  
   ;; do nothing otherwise
   )
-
 
 (defun search-available-port (&optional (from 8888))
   "If the given port number is already in use try another one
@@ -517,7 +514,6 @@
 	     (progn
 	       (format t "~%Found Avaiable Port Number: ~A" port)
 	       (return port))))))
-
 
 (define-easy-handler (yomi-main :uri "/yomi") (yomifile)
   (let ((*attribute-quote-char* #\"))

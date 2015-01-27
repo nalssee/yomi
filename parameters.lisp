@@ -24,7 +24,8 @@
 (defparameter *default-working-package* "YNB")
 ;; 
 (defparameter *js-css-files*
-  '("flot/jquery.js"
+  '(
+    "flot/jquery.js"
     "flot/jquery.flot.js"
     "flot/jquery.flot.symbol.js"
     "flot-axislabels/jquery.flot.axislabels.js"
@@ -46,16 +47,16 @@
 (defparameter *image-files*
   '(
     "images/symbolize-icons-set/png/128x128/play.png"
-    "images/symbolize-icons-set/png/128x128/arrow_up.png" 
-    "images/symbolize-icons-set/png/128x128/arrow_down.png" 
-    "images/symbolize-icons-set/png/128x128/stop.png" 
-    "images/symbolize-icons-set/png/128x128/cut.png" 
+    "images/symbolize-icons-set/png/128x128/arrow_up.png"
+    "images/symbolize-icons-set/png/128x128/arrow_down.png"
+    "images/symbolize-icons-set/png/128x128/stop.png"
+    "images/symbolize-icons-set/png/128x128/cut.png"
     "images/symbolize-icons-set/png/128x128/save.png"
     "images/symbolize-icons-set/png/128x128/notebook.png"
     "images/symbolize-icons-set/png/128x128/folder.png"
     "images/symbolize-icons-set/png/128x128/fast_forward.png"
     "images/symbolize-icons-set/png/128x128/add.png"
-    "images/symbolize-icons-set/png/128x128/undo.png"    
+    "images/symbolize-icons-set/png/128x128/undo.png"
     ))
 
 ;; Scraped from

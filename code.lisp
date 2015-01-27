@@ -37,7 +37,6 @@
 	 (format nil "~{~S~^~%~}" (peel-package-name (rest code))))
 	(t (format nil "~S" (peel-package-name code)))))
 
-
 ;; todo 
 ;; a bit heavy 
 (defun peel-package-name (code)

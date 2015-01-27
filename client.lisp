@@ -287,8 +287,7 @@
 		 ;; other than its result-area
 		   (render-result cell (getprop cell 'result-area) d1))
 	      (focus-to-next-cell (last1 cells-to-render))
-	      (auto-scroll)
-	      )))
+	      (auto-scroll))))
     
     ;; evaluation message is send by keyboard shortcut (Ctrl-Enter)
     ;; the following function handles the message from the action
@@ -802,8 +801,6 @@
 			    :href (shorten-file-name file))))
 	       (t (htm (:script :type "text/javascript"
 				:src (shorten-file-name file))))))
-	
-	(:script :type "text/javascript" :src "https://www.google.com/jsapi")
 	(:script :type "text/javascript" (str (js-for-notebook-page notebook-filename)))
 	(:title :id "title" "YOMI"))
 
