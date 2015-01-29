@@ -9,11 +9,9 @@
    
 (defparameter *working-directory* *default-pathname-defaults*)
 
-(defvar *notebook-clients* nil)
-
-;; I believe 20 is much more than enough.
-;; unless you hit play button like cracy for heavy jobs
-(defparameter *max-eval-threads* 20)
+;; All connected clients are registered here,
+;; with eventloops and some others related.
+(defvar *workplaces* nil)
 
 ;; one of "emacs" "vim" "sublime"
 (defparameter *keymap* "emacs")
@@ -90,4 +88,7 @@
     "SlateGray" "Snow" "SpringGreen" "SteelBlue" "Tan"
     "Teal" "Thistle" "Tomato" "Turquoise" "Violet"
     "Wheat" "White" "WhiteSmoke" "Yellow" "YellowGreen"))
+
+
+
 

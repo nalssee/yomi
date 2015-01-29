@@ -1,5 +1,35 @@
 (in-package :yomi)
 
+;; ======================================================
+;; Client -> Server
+;; A message is transferd as a list of JSON strings
+;; (A list of JSON strings means once you decode it using cl-json
+;; it becomes a list of strings)
+;; ======================================================
+
+;; The first element is a command (a dispatching message)
+;; (It is of course possible to have multiple command strings but not yet)
+;; and the rest is data related to the command
+
+;; 1. command (the first element of the list) : eval (evalkey, evalon)
+;     evalkey (evaluation by keyboard action, ctrl + enter)
+;;    evalon (evalate the follow-up cells as well till the end.
+;;            Even for evalon, you just send one cell content. not them all
+;;            the reason is not very simple)
+;;    data (the rest):  (cell-number cell-content)
+
+;; 2. command: interrupt (interrupt)
+;     As for interrupt, a message is a single element list
+
+;; 3. command: loadFile
+;;    data:    (filename) (ex, "foo.yomi"), length = 1
+
+;;  When the file already exists in the working directory, sends an error message.
+;;  Of course it is safe to save a file multiple times,
+;;  if it's a loaded file or newly created file
+;; 4. command: saveFile (or saveFileEnforce)
+;;    data:    (filename cell-content-1 cell-content-2 ...)
+
 (defun js-for-notebook-page (notebook-filename)
   (ps
     (lisp *ps-lisp-library*)
@@ -44,21 +74,16 @@
     (defvar rendering-function-set (create))
     
     ;; =============================================
-    ;; For CL compatibility
+    ;; For CL compatibility, far from perfection even for those defined
     ;; =============================================    
     (defun first (x) (getprop x 0))
     (defun rest  (x) (chain x (slice 1)))
     (defun last1 (x)
       (getprop x (- (chain x length) 1)))
-
+    
     (defun position (x xs)
-      (let ((result nil))
-	(loop for i from 0
-	   for xi in xs do
-	     (when (= x xi)
-	       (setf result i)
-	       (return)))
-	result))
+      (let ((val (chain xs (index-of x))))
+	(unless (< val 0) val)))
     
     (setf
      ;; string formatting
@@ -88,12 +113,8 @@
       (unless (processing-p)
 	(chain document (get-element-by-id "choose-notebook") (click))))
 
-    ;; ws is the name of websocket
-
-    ;; command can be either "eval" or "evalk"
-    ;; "evalk" means evaluation by keyboard short cut (Ctrl-Enter)
-    ;; See for yourself what's the difference
-    (defun eval-cell-and-go (cell &optional (command "eval"))
+    ;; command can be either "eval", "evalkey" or "evalon"
+    (defun eval-cell (cell &optional (command "eval"))
       (unless (processing-p)
 	(let ((cell-content (chain (getprop cell 'editor) (get-value)))
 	      (cell-no (getprop cell 'no)))
@@ -103,43 +124,10 @@
 	  (unless (and (last-cell-p cell)
 		       (= (chain cell-content (trim)) ""))
 	    (notify "PROCESSING" "orange")
-	    ;; Message is sent as a JSON string
-	    (chain ws (send (chain +JSON+ (stringify
-					   (make-message
-					    command
-					    ;; Even if we are evaluating only one cell
-					    ;; it is sent as a list to avoid in accordance
-					    ;; with eval-forward.
-					    (array
-					     ;; List may not be the best
-					     ;; data structure for this job
-					     ;; I just want to simplify it though.
-					     (array cell-no cell-content)))))))))))
+	    (send-message (array command cell-no cell-content))))))
     
     (defun interrupt ()
-      (chain ws (send (chain +JSON+ (stringify
-				     (make-message
-				      "interrupt"
-				      ""))))))
-
-    ;; Eval all cells from the focused cell
-    ;; Caution: Not all cells, all cells from the focused cell.
-    (defun eval-forward ()
-      (eval-cells (chain all-cells
-			 (slice (cell-position focused-cell)))))
-    
-    ;; 
-    (defun eval-cells (cells)
-      (unless (processing-p)
-	(notify "PROCESSING" "orange")
-	(chain
-	 ws
-	 (send (chain +JSON+ (stringify
-			      (make-message
-			       "eval"
-			       (loop for c in cells collect
-				    (array (getprop c 'no)
-					   (chain (getprop c 'editor) (get-value)))))))))))
+      (send-message (array "interrupt")))
         
     (defun move-up ()
       (unless (processing-p)
@@ -177,7 +165,8 @@
     ;; add a cell after the focused cell
     (defun add-cell ()
       (unless (processing-p)
-	(make-cell focused-cell)))
+	(make-cell focused-cell)
+	(notify "" "")))
     
     ;; Remove a focused-cell and focus goes up
     ;; if there's only one cell do nothing
@@ -238,26 +227,18 @@
 
     (defun save-notebook ()
       (unless (or (empty-notebook-p) (processing-p))
-	(chain
-	 ws
-	 (send (chain +JSON+
-		      (stringify
-		       (make-message
-			(if (= ever-been-saved 0)
-			    "saveFileWithCaution"
-			    "saveFile")
-			;; first element of data list is a filename to save
-			(append (list (chain rename-span |innerHTML|))
-				(loop for cell in all-cells collect
-				     (chain (getprop cell 'editor) (get-value)))))))))))
+	(send-message
+	 (append 
+	  (array (if (= ever-been-saved 0)  "saveFile" "saveFileEnforce")
+		 ;; file name to save
+		 (chain rename-span |innerHTML|))
+	  ;; cell contents in all-cells
+	  (loop for cell in all-cells collect
+	       (chain (getprop cell 'editor) (get-value)))))))
     
     (defun load-notebook-file (notebook-filename)
       (setf ever-been-saved 1)
-      (when notebook-filename
-	(chain ws (send (chain +JSON+ (stringify
-				       (make-message
-					"loadFile"
-					notebook-filename)))))))
+      (send-message (array "loadFile" notebook-filename)))
     
     ;; =========================================================
     ;; While buttons send messages to the server through web socket
@@ -274,34 +255,52 @@
     ;; Register functions for message handling
     
     (setf (getprop message-handling-function-set "evaled")
-	  ;; data is a list of evaled-result
+	  ;; data is an evaled-result
 	  (lambda (data)
-	    ;; Maybe I am consuming this thawing potion too early.
-	    (notify "" "")
-	    (let ((cells-to-render (search-cells-to-render
-				    (mapcar (lambda (d1) (@ d1 cellno)) data))))
-	      (loop for d1 in data
-		 for cell in cells-to-render do
-		 ;; result area can be broken into pieces (vpack, hpack)
-		 ;; and sometimes you may want to modify cell elements
-		 ;; other than its result-area
-		   (render-result cell (getprop cell 'result-area) d1))
-	      (focus-to-next-cell (last1 cells-to-render))
-	      (auto-scroll))))
+	    ;; find a cell to render
+	    (let ((cell (find-cell (@ data cellno))))
+	      ;; result area can be broken into pieces (vpack, hpack)
+	      ;; and sometimes you may want to modify cell elements
+	      ;; other than its result-area
+	      (render-result cell (getprop cell 'result-area) data)
+	      ;; Just in case a user clicks other cells while processing
+	      (if (= "code" (@ data type))
+		  (focus-to-next-cell focused-cell)
+		  (focus-to-next-cell cell))
+	      ;; "PROCESSING" message out
+	      (notify "" ""))))
     
     ;; evaluation message is send by keyboard shortcut (Ctrl-Enter)
-    ;; the following function handles the message from the action
-    ;; almost the same as the above except the last part
-    (setf (getprop message-handling-function-set "evaledk")
+    (setf (getprop message-handling-function-set "evaledkey")
 	  (lambda (data)
-	    (notify "" "")
-	    (let ((cells-to-render (search-cells-to-render
-				    (mapcar (lambda (d1) (@ d1 cellno)) data))))
-	      (loop for d1 in data
-		 for cell in cells-to-render do
-		   (render-result cell (getprop cell 'result-area) d1))
-	      ;; focus-to-next-cell is not invoked here
-	      )))
+	    (let ((cell (find-cell (@ data cellno))))
+	      (render-result cell (getprop cell 'result-area) data)
+	      ;; focusing stays, so no need to do anything unless
+	      ;; the rendering includes a cell generation
+	      (get-it-focused cell)
+	      (notify "" ""))))
+    
+    ;; Evaluation goes on till the end
+    ;; Looks simple and dull but this is written very carefully,
+    ;; YOU MUST BE VERY CAUTIOUS IF YOU EVER WANT TO FIX THIS!!!
+    (setf (getprop message-handling-function-set "evaledon")
+	  (lambda (data)
+	    (let ((cell (find-cell (@ data cellno))))
+	      (cond ((and (last-cell-p cell) (not (= (@ data type) "code")))
+		     ;; end case
+		     (render-result cell (getprop cell 'result-area) data)
+		     (focus-to-next-cell cell)
+		     (notify "" ""))
+		    (t (cond ((= (@ data type) "code")
+			      (render-result cell (getprop cell 'result-area) data)
+			      ;; Thawing
+			      (notify "" "")
+			      (eval-cell cell "evalon"))
+			     (t
+			      (render-result cell (getprop cell 'result-area) data)
+			      (focus-to-next-cell cell)
+			      (notify "" "")
+			      (eval-cell focused-cell "evalon"))))))))
     
     ;; Notebook file loading 
     (setf (getprop message-handling-function-set "code")
@@ -325,13 +324,15 @@
     (setf (getprop message-handling-function-set "systemError")
 	  ;; set values to cells
 	  (lambda (data)
-	    (notify "SYSTEM ERROR" "RED")
-	    (let ((cell (make-cell (last-cell))))
-	      (setf (chain (getprop cell 'result-area) |innerHTML|) data)
-	      (setf (chain (getprop cell 'editor)
+	    (let ((fc (first-cell)))
+	      (setf (chain (getprop fc 'result-area) |innerHTML|) data)
+	      ;; hide editor
+	      (setf (chain (getprop fc 'editor)
 			   (get-wrapper-element) style display) "none")
-	      (setf (chain (getprop cell 'cell-loc-area) style visibility) "hidden")
-	      (get-it-focused cell))))
+	      ;; hide cell loc area
+	      (setf (chain (getprop fc 'cell-loc-area) style visibility) "hidden")
+	      (get-it-focused fc)
+	      (notify "SYSTEM ERROR" "RED"))))
     
     ;; System messages like "saved" or "interrupted" 
     (setf (getprop message-handling-function-set "systemMessage")
@@ -343,7 +344,7 @@
 		   (setf (chain rename-span style color) "green")
 		   (change-title))
 		  ((= data "interrupted")
-		   (notify "INTERRUPTED" "dodgerblue"))
+		   (notify "INTERRUPTED" "red"))
 		  ;; set package
 		  ((and (instanceof data |Array|)
 			(= (first data) "set-package"))
@@ -393,7 +394,7 @@
 	      (setf (@ inner-div style height)
 		    (+ (chain value height (to-string)) "px"))
 	      
-	      (draw-chart inner-div (@ value series-list)  (@ value options))
+	      (draw-chart inner-div (@ value series-list) (@ value options))
 	      ;; write title if exists
 	      (unless (= (@ value title) null)
 		(setf (@ inner-div title) (@ value title))
@@ -414,13 +415,11 @@
 	    (get-it-focused cell)
 	    ;; code generation expression itself is overwritten.
 	    ;; I've given a lot of thought into it
+	    ;; So dont' change this instantly
 	    (chain (getprop cell 'editor) (get-doc) (set-value (first value)))
 	    (loop for v1 in (rest value) do
 		 (let ((c1 (make-cell focused-cell)))
-		   (chain (getprop c1 'editor) (get-doc) (set-value v1))))
-	    ;; Do not evaluate generated cells
-	    ;; It's flawed in some ways.
-	    ))
+		   (chain (getprop c1 'editor) (get-doc) (set-value v1))))))
     
     ;; Render error message
     (setf (getprop rendering-function-set "error")
@@ -513,7 +512,6 @@
 	    (chain cell-pad (append-child div-outer))
 	    (insert-a div-outer (getprop sibling 'div-outer)))
 
-	;; 
 	;; textarea wears CodeMirror
 	(setf editor
 	      (|CodeMirror|
@@ -532,21 +530,19 @@
 	       (on "change"
 		   (lambda ()
 		     (setf (chain rename-span style color) "gray")
+		     ;; Remove system error message if exists
 		     (unless (processing-p)
 		       (notify "" "")))))
-
+	
 	(setf (chain rename-span style color) "gray")
 	
-	(unless (processing-p)
-	  (notify "" ""))
 	;; Disable ctrl-enter in the editor
 	;; it is going to be used as cell evaluation
 	;; if you don't include the following expression
 	;; the editor will insert a newline for ctrl-enter
 	(chain editor (set-option
 		       "extraKeys"
-		       (create "Ctrl-Enter"
-			       (lambda (cm)))))
+		       (create "Ctrl-Enter" (lambda (cm) ))))
 
 	;; Just include them all for convenience
 	(let ((cell (create no cell-counter
@@ -583,12 +579,25 @@
 	  cell)))
 
     ;; ====================================================
-    ;; misc.
+    ;; misc
     ;; ====================================================
-    (defun search-cells-to-render (cellnos)
-      (loop for cell in all-cells when (member (getprop cell 'no) cellnos)
-	 collect cell))
-
+    ;; 'msg' is an array of strings, with a command as the first element
+    ;; (it can be commands later but just a command yet)
+    (defun send-message (msg)
+      (chain ws (send (chain +JSON+
+			     ;; List may not be the best
+			     ;; data structure for this job
+			     ;; I just want to simplify it though.
+			     (stringify msg)))))
+    ;; cellno is an integer
+    (defun find-cell (cellno)
+      (let ((found nil))
+	(loop for cell in all-cells do
+	     (when (= cellno (@ cell 'no))
+	       (setf found cell)
+	       (return)))
+	found))
+    
     (defun focus-to-next-cell (cell)
       (let ((cell-to-focus
 	     ;; if the given cell is the last cell and the content is empty
@@ -618,8 +627,8 @@
     (defun get-it-focused (cell)
       (turn-off-border focused-cell)
       (setf focused-cell cell)
-      (turn-on-border cell))
-
+      (turn-on-border cell)
+      (auto-scroll))
 
     (defun auto-scroll ()
       (let* ((div (getprop focused-cell 'div-outer))
@@ -688,10 +697,6 @@
 		(mapcar (lambda (c) (getprop c 'no)) all-cells)))
     
     ;; make a message to send to the server throught web socket
-    (defun make-message (command data)
-      (create command command
-	      data data))
-    
     (defun empty-notebook-p ()
       (and (= (chain all-cells length) 1)
 	   (= ""
@@ -744,7 +749,7 @@
 			(when (and (chain event ctrl-key)
 				   ;; 13 represents "Enter key"
 				   (= (chain event which) 13))
-			  (eval-cell-and-go focused-cell "evalk")))))
+			  (eval-cell focused-cell "evalkey")))))
 
       ;; add key event ctrl-s to save notebook
       (chain ($ document)
@@ -778,8 +783,7 @@
     ;; 
     (setf (chain window onload) init)
     (setf (chain window onbeforeunload)
-	  (lambda () (save-notebook) "Closing Current Notebook")))
-  )
+	  (lambda () (save-notebook) "Closing Current Notebook"))))
 
 
 
@@ -831,10 +835,10 @@
 		    "&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "
 		    (:input :type "image" :src "play.png"
 			    :width *menubutton-size* :height *menubutton-size*
-			    :onclick (ps (eval-cell-and-go focused-cell)))
+			    :onclick (ps (eval-cell focused-cell)))
 		    (:input :type "image" :src "fast_forward.png"
 			    :width *menubutton-size* :height *menubutton-size*
-			    :onclick (ps (eval-forward)))
+			    :onclick (ps (eval-cell focused-cell "evalon")))
 		  
 		    (:input :type "image" :src "stop.png"
 			    :width *menubutton-size* :height *menubutton-size*
@@ -898,4 +902,6 @@
 			    :width *menubutton-size* :height *menubutton-size*
 			    :onclick (ps (save-notebook)))))
 	(:div :id "cellpad"))))))
+
+
 

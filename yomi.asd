@@ -11,7 +11,8 @@
 	       :parenscript
 	       :cl-who
 	       :cl-json
-	       :cl-ppcre)
+	       :cl-ppcre
+	       )
   :serial t
   :components ((:file "packages")
 	       (:file "parameters")
