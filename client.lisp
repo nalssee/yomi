@@ -325,7 +325,8 @@
 	  ;; set values to cells
 	  (lambda (data)
 	    (let ((fc (first-cell)))
-	      (setf (chain (getprop fc 'result-area) |innerHTML|) data)
+	      (setf (chain (getprop fc 'result-area) |innerHTML|)
+		    (chain "<font color='red'>{0}</font>"  (format data)))
 	      ;; hide editor
 	      (setf (chain (getprop fc 'editor)
 			   (get-wrapper-element) style display) "none")
@@ -425,7 +426,8 @@
     (setf (getprop rendering-function-set "error")
 	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
-	    (setf (chain result-area |innerHTML|) value)))
+	    (setf (chain result-area |innerHTML|)
+		  (chain "<font color='red'>{0}</font>" (format value)))))
 
     ;; Sometimes you may want to render multiple results in a single
     ;; result area, especially for plots.

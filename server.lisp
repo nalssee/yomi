@@ -298,7 +298,11 @@
 	     (EVAL-WHEN (:EXECUTE :LOAD-TOPLEVEL :COMPILE-TOPLEVEL)
 	       (CCL::SET-PACKAGE *DEFAULT-WORKING-PACKAGE*))
 
-	     (setf result (eval (read-from-string (format nil "(progn ~A)" str))))
+	     (setf result
+		   ;; handle mutiple values
+		   (list-to-vpack
+		    (multiple-value-list
+		     (eval (read-from-string (format nil "(progn ~A)" str))))))
 	     (in-package :yomi))))
     result))
 
@@ -313,6 +317,13 @@
 		  (string-left-trim '(#\space #\newline #\tab)
 				    (subseq str b)))
 	  (values "" "")))))
+
+(defun list-to-vpack (xs)
+  (case (length xs)
+    ;; no value is just passed as nil
+    (0 nil)
+    (1 (first xs))
+    (otherwise (apply #'vpack xs))))
 
 ;; ===================================================
 ;; Websocket
