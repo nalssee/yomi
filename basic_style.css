@@ -16,7 +16,7 @@ body {
 }
 
 .cell-div-outer {
-    padding : 3px 3px 3px 3px;
+    padding : 1px 1px 1px 1px;
 
 }
 
@@ -26,7 +26,7 @@ body {
     border-color : #FFFFFF;
     border-width : 1px;
 
-    padding : 10px 10px 10px 10px;
+    padding : 3px 3px 3px 3px;
     margin  : 0 auto;
     width   : 90%;
     display : inline-block;

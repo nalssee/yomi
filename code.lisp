@@ -103,9 +103,9 @@
      (format  t "Packing Exmaple")
      (vpack (hpack (vpack (samplot 300 100 8 "cross")
 			  (samplot 300 100 8 "diamond"))
-	     (samplot 180 238 10 "triangle")
-	     (samplot 200 238 10 "square"))
-      (samplot 665 100 1)))
+	     (samplot 180 236 8 "triangle")
+	     (samplot 200 236 8 "square"))
+      (samplot 680 100 8)))
 
    '(progn
      (defun p1 (x)
@@ -134,4 +134,14 @@
    "##rawtext
 <font color='orange'>You should see an error now.</font>"
    '(flatten '((3) 4))
+   
+   "##rawtext
+<h2><font color='dodgerblue'>MathJax</font></h2>
+You need to be online to get the next cell shown properly.
+"
+   "##rawtext
+This is text style: \\(lim_{n \\to \\infty} \\sum_{k=1}^n \\frac{1}{k^2} = \\frac{\\pi^2}{6} \\).
+And this is display style:
+$$ lim_{n \\to \\infty} \\sum_{k=1}^n \\frac{1}{k^2} = \\frac{\\pi^2}{6} $$
+"
    ))

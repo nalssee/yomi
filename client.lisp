@@ -388,13 +388,14 @@
 
 	    (let ((inner-div (chain document (create-element "div"))))
 	      (chain result-area (append-child inner-div))
+	      
 	      ;; set size of the pane
 	      (setf (@ inner-div style width)
 		    ;; to-string is not a must.
 		    (+ (chain value width (to-string)) "px"))
 	      (setf (@ inner-div style height)
 		    (+ (chain value height (to-string)) "px"))
-	      
+	      ;; align at the center
 	      (draw-chart inner-div (@ value series-list) (@ value options))
 	      ;; write title if exists
 	      (unless (= (@ value title) null)
@@ -474,8 +475,11 @@
 	    (setf (chain (getprop cell 'editor) (get-wrapper-element)
 			 style display) "none")
 	    (setf (chain (getprop cell 'cell-loc-area) style visibility) "hidden")
-	    (setf (chain result-area |innerHTML|) value)))
-    
+	    (setf (chain result-area |innerHTML|) value)
+	    ;; Invoke MathJax
+	    ((chain |MathJax| |Hub| |Queue|)
+	     (array "Typeset" (chain |MathJax| |Hub|) result-area))))
+        
     ;; ====================================================
     ;; Make cell
     ;; ====================================================
@@ -807,6 +811,23 @@
 			    :href (shorten-file-name file))))
 	       (t (htm (:script :type "text/javascript"
 				:src (shorten-file-name file))))))
+
+	(:script
+	 :type "text/x-mathjax-config"
+	 (ps ((chain |MathJax| |Hub| |Config|)
+	      (create tex2jax (create inline-math (array (array "$" "$")
+							 (array "\\(" "\\)"))
+				      display-math (array (array "$$" "$$")
+							  (array "\\[" "\\]"))
+				      process-escapes true)
+		      "HTML-CSS" (create available-fonts (array "TeX")))))
+
+	 )
+	(:script
+	 :type "text/javascript"
+	 ;; Mathjax
+	 ;; Must be online to use latex
+	 :src "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML")
 	(:script :type "text/javascript" (str (js-for-notebook-page notebook-filename)))
 	(:title :id "title" "YOMI"))
 
@@ -860,7 +881,6 @@
 				  :width *menubutton-size* :height *menubutton-size*
 				  :onclick (ps (add-cell)))
 
-
 			  (:input :type "image" :src "cut.png"
 				  :width *menubutton-size* :height *menubutton-size*
 				  :onclick (ps (remove-cell)))
@@ -874,7 +894,6 @@
 	      (:div :id "rename_div"
 		    :style "display:inline-block; position:absolute; right: 0;margin-right:14px"
 
-		    
 		    ;; show system messages here
 		    (:span :style "font-size:100%;color:gray;"
 			   :onclick (ps (rename-input-show-up))
@@ -903,6 +922,7 @@
 		    (:input :type "image" :src "save.png"
 			    :width *menubutton-size* :height *menubutton-size*
 			    :onclick (ps (save-notebook)))))
+
 	(:div :id "cellpad"))))))
 
 

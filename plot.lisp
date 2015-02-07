@@ -68,9 +68,10 @@
 		 :lines (t-nil lines)
 		 :bars (t-nil bars)))
 
-
-(defun pick-color ()
-  (nth (random (length *color-list*)) *color-list*))
+(let ((current-color -1))
+  (defun pick-color ()
+    (incf current-color)
+    (nth (mod current-color (length *color-list*)) *color-list*)))
 
 (defun adjoin-option (key value options)
   (if (assoc key options)
@@ -92,7 +93,7 @@
 ;; '(3 2 3 19 2 3 4)
 (defun hist (data &key label (color (pick-color)))
   (series (freq data) :color color
-	  :label label :bars (create :show t :fill-color color) :points nil))
+	  :label label :bars (create :show t :fill-color (tint color)) :points nil))
 
 (defun freq (data)
   (let ((table (make-hash-table)))
@@ -101,3 +102,23 @@
     (let (result)
       (maphash #'(lambda (k v) (push (list k v) result)) table)
       (sort result #'< :key #'first))))
+
+(flet ((base10 (str)
+	 (parse-integer str :radix 16))
+       (color-code (r g b)
+	 (format nil "#~2,'0X~2,'0X~2,'0X" r g b)))
+  ;; Shading is not used yet, just for reference
+  (defun shade (color &optional (offset 0.25))
+    "Returns a shade of the given color"
+    (color-code (floor (* offset (base10 (subseq color 1 3))))
+		(floor (* offset (base10 (subseq color 3 5))))
+		(floor (* offset (base10 (subseq color 5 7))))))
+  (defun tint (color &optional (offset 0.25))
+    "Returns a shade of the given color"
+    (let ((r (base10 (subseq color 1 3)))
+	  (g (base10 (subseq color 3 5)))
+	  (b (base10 (subseq color 5 7))))
+      (color-code (floor (+ (* offset (- 255 r)) r))
+		  (floor (+ (* offset (- 255 g)) g))
+		  (floor (+ (* offset (- 255 b)) b))))))
+
