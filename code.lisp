@@ -144,4 +144,11 @@ This is text style: \\(lim_{n \\to \\infty} \\sum_{k=1}^n \\frac{1}{k^2} = \\fra
 And this is display style:
 $$ lim_{n \\to \\infty} \\sum_{k=1}^n \\frac{1}{k^2} = \\frac{\\pi^2}{6} $$
 "
+   "##rawtext
+<h2><font color='dodgerblue'>Generate Cells</font></h2>
+Probably this is why I bother to write this program. And this 'demo' function itself is written this way. Type in the next cell (make-code '(+ 10 20) '(* 10 20)) and  press 'fast-forward' button above to see what happens.
+"
    ))
+
+
+
