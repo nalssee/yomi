@@ -55,6 +55,8 @@
     "images/symbolize-icons-set/png/128x128/add.png"
     "images/symbolize-icons-set/png/128x128/undo.png"))
 
+;; Scraped from
+;; http://www.w3schools.com/html/html_colornames.asp
 (defparameter *color-list*
   '(("AliceBlue" "#F0F8FF")
     ("AntiqueWhite" "#FAEBD7")

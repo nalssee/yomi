@@ -101,6 +101,8 @@
       (maphash #'(lambda (k v) (push (list k v) result)) table)
       (sort result #'< :key #'first))))
 
+;; Reference
+;; http://stackoverflow.com/questions/6615002/given-an-rgb-value-how-do-i-create-a-tint-or-shade
 (flet ((base10 (str)
 	 (parse-integer str :radix 16))
        (color-code (r g b)
@@ -119,7 +121,7 @@
 		  (floor (* offset (base10 (subseq color 3 5))))
 		  (floor (* offset (base10 (subseq color 5 7)))))))
   (defun tint (color &optional (offset 0.25))
-    "Returns a shade of the given color"
+    "Returns a brighter color"
     (let ((color (name->code color)))
       (let ((r (base10 (subseq color 1 3)))
 	    (g (base10 (subseq color 3 5)))
