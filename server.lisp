@@ -91,7 +91,7 @@
 ;;    data: an evaled-result
 
 ;; 2. command: code (code to load)
-;;    data:    a list of string
+;;    data:    a list of (string string)
 
 ;; 3. command: systemError (file IO error, ...)
 ;;    data: a string
@@ -153,6 +153,21 @@
 (handle-message (client "evalon" data)
   (send-message client "evaledon" (eval-cell data)))
 
+(handle-message (client "saveFileEnforce" data)
+  (savefile client data t))
+
+(handle-message (client "loadFile" data)
+  (let* ((filename (first data))
+	 (filename-full (fad:merge-pathnames-as-file
+			 (fad:pathname-as-directory *working-directory*)
+			 filename)))
+    (cond ((not (fad:file-exists-p filename-full))
+	   (error "~A not exists in ~A" filename *working-directory*))
+	  (t (with-open-file (s filename-full)
+	       (send-message
+		client "code"
+		(list filename (json:decode-json s))))))))
+
 (defun savefile (client data &optional enforce)
   (let* ((filename (string-trim '(#\space #\newline) (first data)))
 	 ;; full path
@@ -176,20 +191,7 @@
 (handle-message (client "saveFile" data)
   (savefile client data))
 
-(handle-message (client "saveFileEnforce" data)
-  (savefile client data t))
 
-(handle-message (client "loadFile" data)
-  (let* ((filename (first data))
-	 (filename-full (fad:merge-pathnames-as-file
-			 (fad:pathname-as-directory *working-directory*)
-			 filename)))
-    (cond ((not (fad:file-exists-p filename-full))
-	   (error "~A not exists in ~A" filename *working-directory*))
-	  (t (with-open-file (s filename-full)
-	       (send-message
-		client "code"
-		(list filename (json:decode-json s))))))))
 
 ;; 'interrupt' message is special,
 ;; handle-message does not handle it.

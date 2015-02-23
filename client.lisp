@@ -312,8 +312,9 @@
 	      ;; hence no need for make-cell
 	      (chain (getprop (first-cell) 'editor) (get-doc) (set-value (first data)))
 	      (loop for exp in (rest data) do
-		   (chain (getprop (make-cell) 'editor)
-			  (get-doc) (set-value exp)))
+		   (let ((cell (make-cell)))
+		     (chain (getprop cell 'editor)
+			    (get-doc) (set-value exp))))
 	      (setf (chain rename-span |innerHTML|) filename)
 	      (setf (chain rename-span style color) "Green")
 	      (setf (chain document (get-element-by-id "rename_input") value)
