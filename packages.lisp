@@ -10,12 +10,12 @@
    
    :plot
    :splot
+   :series
+   :hist
    
    :vpack
    :hpack
-   ;; for flot option creation.
-   :create
-
+   
    :set-package
    :make-code
    :append-code
