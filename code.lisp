@@ -62,60 +62,35 @@
    '(intentional error)
    "##rawtext
 <h2><font color='dodgerblue'>Plot Examples</font></h2>"
-   '(plot (series '((-2 2) (3 4) (5 -2) (8 0))))
    ;; 
    '(progn
      (format t "sin(x) and cos(x) from 0 to 2*pi")
-     (plot (series (loop for i from 0 to (* 2 pi) by 0.1 collect
-			(list i (sin i))) :lines t :points nil :color "blue"
-	    :label "sin(x)")
+     (splot
       (series (loop for i from 0 to (* 2 pi) by 0.1 collect
-		   (list i (cos i))) :lines t :points nil :color "red"
-       :label "cos(x)")
-      :xlabel "Radian"))
-
-   '(PLOT (SERIES
-	   (LOOP REPEAT 30
-	      COLLECT (LET ((X (RANDOM 10.0)))
-			(LIST X (- (+ (* X 0.5) (RANDOM 2.0)) 1))))
-	   :LABEL "Random Nums" :COLOR "purple" :POINTS (CREATE :SHOW T :RADIUS 5))
-     (SERIES '((0 0) (10 5)) :LINES T :LABEL "Pseudo L-Sq fit" :COLOR "green")
-     :TITLE "Pseudo Least Squares Fit" :WIDTH 600 :HEIGHT 200 :XLABEL "X-val" :YLABEL
-     "Y-val" :XRANGE '(0 11) :YRANGE '(0 5.5))
-
+		   (list i (sin i))) :type "line" :name "sin(x)")
+      (series (loop for i from 0 to (* 2 pi) by 0.1 collect
+		   (list i (cos i))) :type "line" :name "cos(x)")
+      :x-label "Radian"
+      :point "hide"))
+   
    '(progn
      (defun throw-coins (n)
        (loop repeat n collect (random 2)))
      (let ((xs (loop repeat 3000 collect
 		    (count 1 (throw-coins 100)))))
-       (plot (hist xs :label "n of front")
-	     :width 700 :height 300
-	     :title "Binary Distribution"
-	     :xlabel "n of front")))
-   "##rawtext
-<h2><font color='dodgerblue'>Multiple Results (not necessarily plots)</font></h2>"
-   '(progn
-     (defun samplot (width height radius &optional (point-shape "circle"))
-       (plot (series '((-2 2) (3 4) (5 -2) (8 0)) :lines t
-		     :points (create :show t :radius radius :symbol point-shape))
-	     :width width :height height :title point-shape))
-       
-     (format  t "Packing Exmaple")
-     (vpack (hpack (vpack (samplot 300 100 8 "cross")
-			  (samplot 300 100 8 "diamond"))
-	     (samplot 180 236 8 "triangle")
-	     (samplot 200 236 8 "square"))
-      (samplot 680 100 8)))
+       (splot (hist xs :name "n front")
+	      :width 700 :height 300)))
 
+   "##rawtext
+<h2><font color='dodgerblue'>Multiple Results (not just for plots)</font></h2>"
    '(progn
-     (defun p1 (x)
-       (plot (series (loop for i from 1 to 100 by (* x pi)
-			collect (list (sin i) (cos i)))
-		     :lines t)
-	     :width 150 :height 150 :yrange '(-1 1)
-	     :xrange '(-1 1)))
-     (vpack (hpack (p1 0.2) (p1 0.3) (p1 0.6))
-      (hpack (p1 0.7) (p1 0.8) (p1 1.1))))
+     (defun samplot (width height)
+       (splot (series '((-2 2) (3 4) (5 -2) (8 0)) :type "line")
+	      :width width :height height :legend "hide"))
+     (format  t "Packing Exmaple")
+     (vpack (hpack (vpack (samplot 300 200)
+			  (samplot 300 200))
+	     (samplot 400 414))))
 
    "##rawtext
 <h2><font color='dodgerblue'>SET-PACKAGE</font></h2>
@@ -146,7 +121,10 @@ $$ lim_{n \\to \\infty} \\sum_{k=1}^n \\frac{1}{k^2} = \\frac{\\pi^2}{6} $$
 "
    "##rawtext
 <h2><font color='dodgerblue'>Generate Cells</font></h2>
-Probably this is why I bother to write this program. And this 'demo' function itself is written this way. Type in the next cell (make-code '(+ 10 20) '(* 10 20)) and  press 'fast-forward' button above to see what happens.
+This is why I bother to write this program.
+And this 'demo' function itself is written this way.
+Type in the next cell (make-code '(+ 10 20) '(* 10 20))
+and press 'fast-forward' button above to see what happens.
 "
    ))
 

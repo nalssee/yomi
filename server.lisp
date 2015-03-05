@@ -168,19 +168,46 @@
 		client "code"
 		(list filename (json:decode-json s))))))))
 
+;; Save 2 types of files,
+;; one for editing in the future,
+;; and another for publication.
 (defun savefile (client data &optional enforce)
   (let* ((filename (string-trim '(#\space #\newline) (first data)))
+	 (new-directory
+	  (fad:merge-pathnames-as-directory
+	   *working-directory*
+	   (fad:pathname-as-directory filename)))
 	 ;; full path
 	 (filename-to-save
+	  ;; ex) filename.yomi
 	  (fad:merge-pathnames-as-file
-	   (fad:pathname-as-directory *working-directory*)
-	   ;; ex) filename.yomi
-	   (make-pathname :name filename :type "yomi"))))
+	   *working-directory*
+	   (make-pathname :name filename :type "yomi")))
+	 ;; 
+	 (filename-to-save-static
+	  (fad:merge-pathnames-as-file
+	   new-directory
+	   (make-pathname :name filename :type "html")))
+	 (notebook-content (rest data)))
+    (ensure-directories-exist new-directory)
+    ;; copy some css files required
+    ;; Only 2 files to copy. I suppose it's tolerable not to separate this part out.
+    (fad:copy-file (fad:merge-pathnames-as-file
+		    (asdf:system-source-directory 'yomi) "c3/c3.css")
+		   (fad:merge-pathnames-as-file new-directory "c3.css") :overwrite t)
+    (fad:copy-file (fad:merge-pathnames-as-file
+		    (asdf:system-source-directory 'yomi) "static.css")
+		   (fad:merge-pathnames-as-file new-directory "static.css") :overwrite t)
     (flet ((savefile-supersede ()
 	     (with-open-file (s filename-to-save
 				:direction :output
 				:if-exists :supersede)
-	       (json:encode-json (rest data) s))))
+	       (json:encode-json
+		(loop for x in notebook-content collect (first x)) s))
+	     (with-open-file (s filename-to-save-static
+				:direction :output
+				:if-exists :supersede)
+	       (save-notebook-static s notebook-content))))
       (cond (enforce (savefile-supersede)
 		     (send-message client "systemMessage" "saved"))
 	    (t (if (fad:file-exists-p filename-to-save)
@@ -188,10 +215,27 @@
 		   (progn (savefile-supersede)
 			  (send-message client "systemMessage" "saved"))))))))
 
+(defun save-notebook-static (fileport notebook-content)
+  (with-html-output  (fileport nil :prologue "<!DOCTYPE html>" :indent t)
+    (:html
+     :lang "en"
+     (:head
+      (:meta :charset "utf-8"))
+     (:link :rel "stylesheet" :href "c3.css")
+     (:link :rel "stylesheet" :href "static.css") 
+     (:body
+      (loop for (editor result) in notebook-content do
+	   (let ((cell-type (detect-cell-type editor)))
+	     (when (and (not (string= cell-type "##rawtext"))
+			  (not (string= cell-type "##hidecode")))
+	       (htm (:pre :class "pre_edit" (str editor))))
+	     (if (string= cell-type "##rawtext")
+		 (htm (:pre :class "pre_result_rawtext" (str result)))
+		 (htm (:pre :class "pre_result" (str result))))))
+      (:div :id "cellpad")))))
+
 (handle-message (client "saveFile" data)
   (savefile client data))
-
-
 
 ;; 'interrupt' message is special,
 ;; handle-message does not handle it.
@@ -234,7 +278,9 @@
 
 (defmethod build-evaled-result ((result chart) stdout cell-no)
   (make-instance 'evaled-result
-		 :cellno cell-no :type "chart" :value result :stdout stdout))
+		 ;; send a string that is to be parsed by the client.
+		 :cellno cell-no :type "chart" :value (chart-object-string result)
+		 :stdout stdout))
 
 (defmethod build-evaled-result ((result code) stdout cell-no)
   (make-instance 'evaled-result
@@ -277,7 +323,19 @@
   (make-instance 'evaled-result
 		 ;; Is ##rawtext too long? or informative?
 		 :cellno cell-no :type "##rawtext"
-		 :value (content result) :stdout "")) 
+		 :value (content result) :stdout ""))
+
+(defclass hidecode ()
+  ((content :initarg :content :reader content)))
+
+(defmethod build-evaled-result ((result hidecode) stdout cell-no)
+  ;; what stanard output?
+  (declare (ignore stdout))
+  (make-instance 'evaled-result
+		 ;; Is ##rawtext too long? or informative?
+		 :cellno cell-no :type "##hidecode"
+		 :value (eval-cell (list cell-no (content result)))
+		 :stdout ""))
 
 ;; all the rest
 (defmethod build-evaled-result ((result t) stdout cell-no)
@@ -290,6 +348,10 @@
     (multiple-value-bind (cell-type rest) (detect-cell-type str)
       (cond ((string= cell-type "##rawtext")
 	     (setf result (make-instance 'rawtext :content rest)))
+	    ;; Just the same as other cells except that
+	    ;; editor will be hidden, and only result will be shown.
+	    ((string= cell-type "##hidecode")
+	     (setf result (make-instance 'hidecode :content rest)))
 	    ;; more cell-types? 
 	    (t
 	     #+SBCL
@@ -304,6 +366,10 @@
 		   ;; handle mutiple values
 		   (list-to-vpack
 		    (multiple-value-list
+		     ;; AS for SBCL, no need for explicit compilation
+		     ;; eval funtion compiles it before evaluation,
+		     ;; unless you set sb-ext:*evaluator-mode* to :interpret
+		     ;; No idea for other implementations.
 		     (eval (read-from-string (format nil "(progn ~A)" str))))))
 	     (in-package :yomi))))
     result))

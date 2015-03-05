@@ -29,6 +29,7 @@
 ;;  if it's a loaded file or newly created file
 ;; 4. command: saveFile (or saveFileEnforce)
 ;;    data:    (filename cell-content-1 cell-content-2 ...)
+;; where cell-content : (list editor-content result-content)
 
 (defun js-for-notebook-page (notebook-filename)
   (ps
@@ -234,7 +235,9 @@
 		 (chain rename-span |innerHTML|))
 	  ;; cell contents in all-cells
 	  (loop for cell in all-cells collect
-	       (chain (getprop cell 'editor) (get-value)))))))
+	       (array
+		(chain (getprop cell 'editor) (get-value))
+		(chain (getprop cell 'result-area) |innerHTML|)))))))
     
     (defun load-notebook-file (notebook-filename)
       (setf ever-been-saved 1)
@@ -374,39 +377,28 @@
 		  (if (= stdout "")
 		      value
 		      (chain "{0}<br>{1}" (format stdout value))))))
-    
-    ;; Draw chart using "flot"
+
+    ;; charting with c3
     (setf (getprop rendering-function-set "chart")
 	  (lambda (cell result-area value stdout)
 	    (clear-result-area result-area)
-	    ;; write standard output if exists	
+	    ;; write standard output if exists
 	    (unless (= stdout null)
 	      (let ((p (chain document (create-element "p"))))
 		;; "pre-wrap" is inherited
 		;; no need for style setup
 		(chain result-area (append-child p))
 		(setf (chain p |innerHTML|) stdout)))
-
 	    (let ((inner-div (chain document (create-element "div"))))
 	      (chain result-area (append-child inner-div))
-	      
-	      ;; set size of the pane
-	      (setf (@ inner-div style width)
-		    ;; to-string is not a must.
-		    (+ (chain value width (to-string)) "px"))
-	      (setf (@ inner-div style height)
-		    (+ (chain value height (to-string)) "px"))
-	      ;; align at the center
-	      (draw-chart inner-div (@ value series-list) (@ value options))
-	      ;; write title if exists
-	      (unless (= (@ value title) null)
-		(setf (@ inner-div title) (@ value title))
-		(let ((title-element (chain document (create-element "div"))))
-		  (setf (@ title-element style width)
-			(+ (chain value width (to-string)) "px"))
-		  (chain result-area (append-child title-element))
-		  (setf (chain title-element align) "center")
-		  (setf (chain title-element |innerHTML|) (@ value title)))))))
+	      ;; Simply generate a chart.
+	      ;; I may find some reasons to bind the chart with a variable later,
+	      ;; but not now.
+
+	      (let ((value (chain +JSON+ (parse value))))
+		(setf (getprop value "bindto") inner-div)
+		(chain c3 (generate value))))))
+    
 
     ;; code rendering is different from notebook file loading
     ;; You can type in message in text area and the server sends a message
@@ -471,7 +463,7 @@
     ;; as a simple string
     (setf (getprop rendering-function-set "##rawtext")
 	  (lambda (cell result-area value stdout)
-	    (clear-result-area result-area stdout)
+	    (clear-result-area result-area)
 	    ;; hide text area and cell-loc-area
 	    (setf (chain (getprop cell 'editor) (get-wrapper-element)
 			 style display) "none")
@@ -480,7 +472,18 @@
 	    ;; Invoke MathJax
 	    ((chain |MathJax| |Hub| |Queue|)
 	     (array "Typeset" (chain |MathJax| |Hub|) result-area))))
-        
+
+    ;; if editor content starts with ##hidecode 
+    ;; Handle the rest exactly as the others, just hide editor
+    (setf (getprop rendering-function-set "##hidecode")
+	  (lambda (cell result-area value stdout)
+	    ;; hide editor area and cell-loc-area
+	    (setf (chain (getprop cell 'editor) (get-wrapper-element)
+			 style display) "none")
+	    (setf (chain (getprop cell 'cell-loc-area) style visibility) "hidden")
+	    ;; make result area back again
+	    (render-result cell result-area value)))
+    
     ;; ====================================================
     ;; Make cell
     ;; ====================================================
@@ -672,10 +675,6 @@
     ;; ====================================================
     ;; Helpers
     ;; ====================================================
-    ;; "flot" specific
-    (defun draw-chart (place data options)
-      (chain $ (plot place data options)))
-    
     ;; insert-after
     (defun insert-a (new-node reference-node)
       (chain reference-node
@@ -790,8 +789,8 @@
     ;; 
     (setf (chain window onload) init)
     (setf (chain window onbeforeunload)
-	  (lambda () (save-notebook) "Closing Current Notebook"))))
-
+	  (lambda () (save-notebook) "Closing Current Notebook")))
+  )
 
 
 ;; page html
@@ -923,8 +922,6 @@
 		    (:input :type "image" :src "save.png"
 			    :width *menubutton-size* :height *menubutton-size*
 			    :onclick (ps (save-notebook)))))
-
 	(:div :id "cellpad"))))))
-
 
 

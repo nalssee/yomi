@@ -9,8 +9,8 @@
    :keymap
    
    :plot
-   :series
-   :hist
+   :splot
+   
    :vpack
    :hpack
    ;; for flot option creation.

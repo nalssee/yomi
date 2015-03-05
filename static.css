@@ -1,0 +1,25 @@
+pre.pre_edit {
+    display: block;
+    font-family: Courier New, monospace;
+    white-space: pre;
+    margin: 1em 0;
+    margin-left: 3em;
+}
+
+pre.pre_result {
+    display: block;
+    font-family: monospace;
+    font-size: 120%;
+    white-space: pre;
+    margin: 1em 0;
+    margin-left: 3em;
+}
+
+pre.pre_result_rawtext {
+    display: block;
+    font-family: Fixed, monospace;
+    white-space: pre;
+    margin: 1em 0;
+    margin-left: 2em;
+}
+
